@@ -1,0 +1,13 @@
+**/*.pyc
+**/.*
+!.gitignore
+ExpAssets/*.db
+ExpAssets/*.db.backup
+ExpAssets/Data/**
+ExpAssets/EDF/**
+ExpAssets/.versions/**
+ExpAssets/Local
+ExpAssets/Local/**
+originial_matlab_code
+swansburg_thesis_procedure_section.txt
+trial_sequence_notes.txt
