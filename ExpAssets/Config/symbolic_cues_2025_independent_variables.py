@@ -1,5 +1,9 @@
 from klibs.KLStructure import FactorSet
 
+exp_factors = FactorSet({
+
+    
+})
 """ ##### FactorSet Tutorial #####
 
 This file specifies the different trial factors and their levels for the experiment.
@@ -47,6 +51,3 @@ you can also note this using a `(level, count)` tuple as shorthand, e.g. `('vali
 
 """
 
-exp_factors = FactorSet({
-    # Insert trial factors here
-})
