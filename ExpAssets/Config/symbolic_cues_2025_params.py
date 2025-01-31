@@ -40,7 +40,7 @@ saccadic_motion_threshold = 0.15
 # Experiment Structure
 #########################################
 multi_session_project = False
-trials_per_block = 0
+# trials_per_block = 0  # needs to be defined relative to trials per cue (see bottom)
 blocks_per_experiment = 1
 conditions = []
 default_condition = None
@@ -66,3 +66,9 @@ append_hostname = False
 #########################################
 # PROJECT-SPECIFIC VARS
 #########################################
+trials_per_cue = 28
+trials_per_block = trials_per_cue * 4
+high_left_prob = [.80, .20] 
+high_right_prob = [.20, .80]
+low_left_prob = [.55, .45] 
+low_right_prob = [.45, .55]
