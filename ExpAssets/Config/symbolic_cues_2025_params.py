@@ -8,7 +8,7 @@ manual_demographics_collection = False
 manual_trial_generation = False
 run_practice_blocks = True
 multi_user = False
-view_distance = 57 # in centimeters, 57cm = 1 deg of visual angle per cm of screen
+view_distance = 57  # in centimeters, 57cm = 1 deg of visual angle per cm of screen
 allow_hidpi = True
 
 #########################################
@@ -23,8 +23,8 @@ eye_tracking = False
 default_fill_color = (45, 45, 45, 255)
 default_color = (255, 255, 255, 255)
 default_font_size = 23
-default_font_unit = 'px'
-default_font_name = 'Hind-Medium'
+default_font_unit = "px"
+default_font_name = "Hind-Medium"
 
 #########################################
 # EyeLink Settings
@@ -66,9 +66,27 @@ append_hostname = False
 #########################################
 # PROJECT-SPECIFIC VARS
 #########################################
-trials_per_cue = 28
-trials_per_block = trials_per_cue * 4
-high_left_prob = [.80, .20] 
-high_right_prob = [.20, .80]
-low_left_prob = [.55, .45] 
-low_right_prob = [.45, .55]
+trials_per_cue = 30
+
+cue_validities = {
+    "high": {"left": [0.80, 0.20], "right": [0.20, 0.80]},
+    "low": {"left": [0.60, 0.40], "right": [0.40, 0.60]},
+}
+
+cue_counts = {
+    "high": {
+        "left": trials_per_cue * cue_validities["high"]["left"],
+        "right": trials_per_cue * cue_validities["high"]["right"],
+    },
+    "low": {
+        "left": trials_per_cue * cue_validities["low"]["left"],
+        "right": trials_per_cue * cue_validities["low"]["right"],
+    },
+}
+
+# Fix block length as the collective sum of cue counts
+trials_per_block = 0
+
+for validity in cue_counts.keys():
+    for side in cue_counts[validity].keys():
+        trials_per_block += sum(cue_counts[validity][side])
