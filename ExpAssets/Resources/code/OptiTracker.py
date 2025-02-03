@@ -2,10 +2,6 @@ import os
 import numpy as np
 import sqlite3
 from scipy.signal import butter, sosfiltfilt
-import klibs
-import warnings
-from pprint import pprint
-# from klibs.KLDatabase import KLDatabase as kld
 
 # TODO:
 # grab first frame, row count indicates num markers tracked.
@@ -39,7 +35,6 @@ class OptiTracker(object):
         sample_rate: int = 120,
         window_size: int = 5,
         data_dir: str = "",
-        db_name: str = "optitracker.db",
     ):
         """
         Initialize the OptiTracker object.
@@ -57,31 +52,6 @@ class OptiTracker(object):
         self.__sample_rate = sample_rate
         self.__data_dir = data_dir
         self.__window_size = window_size
-        # self.db = self.__connect(db_name)
-
-        # self.cursor = self.db.cursor()
-
-        db_scheme = '''
-        CREATE TABLE IF NOT EXISTS frames (
-            frame_number INTEGER PRIMARY KEY,
-            pos_x REAL,
-            pos_y REAL,
-            pos_z REAL
-        )
-        '''
-
-        # self.cursor.execute(db_scheme)
-
-
-    # @property
-    # def database(self) -> str:
-    #     """Get the name of the database file."""
-    #     return self.__database
-    #
-    # @database.setter
-    # def database(self, database: str) -> None:
-    #     """Set the name of the database file."""
-    #     self.__database = database
 
     @property
     def marker_count(self) -> int:
@@ -293,9 +263,9 @@ class OptiTracker(object):
 
 
             idx = frame_number - start
-            means[idx]["pos_x"] = np.mean(this_frame["pos_x"])
-            means[idx]["pos_y"] = np.mean(this_frame["pos_y"])
-            means[idx]["pos_z"] = np.mean(this_frame["pos_z"])
+            means["pos_x"][idx] = int(np.mean(this_frame["pos_x"]))
+            means["pos_y"][idx] = int(np.mean(this_frame["pos_y"]))
+            means["pos_z"][idx] = int(np.mean(this_frame["pos_z"]))
 
             idx += 1
 
