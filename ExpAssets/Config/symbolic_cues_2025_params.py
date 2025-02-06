@@ -40,8 +40,9 @@ saccadic_motion_threshold = 0.15
 # Experiment Structure
 #########################################
 multi_session_project = False
-# trials_per_block = 0  # needs to be defined relative to trials per cue (see bottom)
 blocks_per_experiment = 1
+trials_per_cue = 40
+trials_per_block = 40 * 4
 conditions = []
 default_condition = None
 
@@ -66,27 +67,21 @@ append_hostname = False
 #########################################
 # PROJECT-SPECIFIC VARS
 #########################################
-trials_per_cue = 30
-
-cue_validities = {
-    "high": {"left": [0.80, 0.20], "right": [0.20, 0.80]},
-    "low": {"left": [0.60, 0.40], "right": [0.40, 0.60]},
+cue_ratios = {
+    "HIGH": {"LEFT": [0.80, 0.20], "RIGHT": [0.20, 0.80]},
+    "LOW": {"LEFT": [0.525, 0.475], "RIGHT": [0.475, 0.525]},
 }
 
-cue_counts = {
-    "high": {
-        "left": trials_per_cue * cue_validities["high"]["left"],
-        "right": trials_per_cue * cue_validities["high"]["right"],
-    },
-    "low": {
-        "left": trials_per_cue * cue_validities["low"]["left"],
-        "right": trials_per_cue * cue_validities["low"]["right"],
-    },
-}
+trial_list = []
 
-# Fix block length as the collective sum of cue counts
-trials_per_block = 0
+for likelihood in cue_ratios.keys():
+    for laterality in cue_ratios[likelihood].keys():
+        for _ in range(int(cue_ratios[likelihood][laterality][0] * trials_per_cue)):
+            trial_list.append(
+                {"likelihood": likelihood, "laterality": laterality, "valid": True}
+            )
 
-for validity in cue_counts.keys():
-    for side in cue_counts[validity].keys():
-        trials_per_block += sum(cue_counts[validity][side])
+        for _ in range(int(cue_ratios[likelihood][laterality][1] * trials_per_cue)):
+            trial_list.append(
+                {"likelihood": likelihood, "laterality": laterality, "valid": False}
+            )
