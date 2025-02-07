@@ -67,20 +67,27 @@ append_hostname = False
 #########################################
 # PROJECT-SPECIFIC VARS
 #########################################
+
+# Proportion, by cue type, of in/validly cued trials
 cue_ratios = {
     "HIGH": {"LEFT": [0.80, 0.20], "RIGHT": [0.20, 0.80]},
     "LOW": {"LEFT": [0.525, 0.475], "RIGHT": [0.475, 0.525]},
 }
 
+# generate trial sequence, with 40 trials per cue
+# for each cue, divy up trials such that cues' intended
+# probability matches their actual probability (of successfully cuing target)
 trial_list = []
 
 for likelihood in cue_ratios.keys():
     for laterality in cue_ratios[likelihood].keys():
+        # first number in array represents % of correctly cued trials
         for _ in range(int(cue_ratios[likelihood][laterality][0] * trials_per_cue)):
             trial_list.append(
                 {"likelihood": likelihood, "laterality": laterality, "valid": True}
             )
 
+        # second num represents invalidly cued trials
         for _ in range(int(cue_ratios[likelihood][laterality][1] * trials_per_cue)):
             trial_list.append(
                 {"likelihood": likelihood, "laterality": laterality, "valid": False}
