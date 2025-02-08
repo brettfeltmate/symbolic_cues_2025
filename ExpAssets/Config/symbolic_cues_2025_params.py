@@ -20,8 +20,8 @@ eye_tracking = False
 #########################################
 # Environment Aesthetic Defaults
 #########################################
-default_fill_color = (45, 45, 45, 255)
-default_color = (255, 255, 255, 255)
+default_fill_color = (125, 125, 125, 255)
+default_color = (0, 0, 0, 255)
 default_font_size = 23
 default_font_unit = "px"
 default_font_name = "Hind-Medium"
@@ -42,7 +42,7 @@ saccadic_motion_threshold = 0.15
 multi_session_project = False
 blocks_per_experiment = 1
 trials_per_cue = 40
-trials_per_block = 40 * 4
+trials_per_block = trials_per_cue * 4
 conditions = []
 default_condition = None
 
@@ -76,19 +76,15 @@ cue_ratios = {
 
 # generate trial sequence, with 40 trials per cue
 # for each cue, divy up trials such that cues' intended
-# probability matches their actual probability (of successfully cuing target)
+# probability matches their actual probability (of cuing target)
 trial_list = []
 
 for likelihood in cue_ratios.keys():
     for laterality in cue_ratios[likelihood].keys():
         # first number in array represents % of correctly cued trials
         for _ in range(int(cue_ratios[likelihood][laterality][0] * trials_per_cue)):
-            trial_list.append(
-                {"likelihood": likelihood, "laterality": laterality, "valid": True}
-            )
+            trial_list.append((likelihood, laterality, True))
 
         # second num represents invalidly cued trials
         for _ in range(int(cue_ratios[likelihood][laterality][1] * trials_per_cue)):
-            trial_list.append(
-                {"likelihood": likelihood, "laterality": laterality, "valid": False}
-            )
+            trial_list.append((likelihood, laterality, False))
