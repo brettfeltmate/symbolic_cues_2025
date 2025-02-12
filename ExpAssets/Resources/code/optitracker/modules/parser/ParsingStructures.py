@@ -1,6 +1,5 @@
 # type: ignore
-from construct import this, Float32l, Int16sl, Struct, Computed, Int32ul
-
+from construct import this, Float32l, Int16sl, Struct, Computed, Int32ul, CString, Default
 
 def decodeMarkerID(obj, _):
     return obj.encoded_id & 0x0000FFFF
@@ -14,13 +13,15 @@ def trackingValid(obj, _):
     return (obj.error & 0x01) != 0
 
 
-unlabeledMarkerStruct = Struct(
+unlabeled_marker = Struct(
+    "frame_number" / Default(Int32ul, 0),
     "pos_x" / Float32l,
     "pos_y" / Float32l,
     "pos_z" / Float32l,
 )
 
-labeledMarkerStruct = Struct(
+labeled_marker = Struct(
+    "frame_number" / Default(Int32ul, 0),
     "id" / Int32ul,
     "marker_id" / Computed(this.id * decodeMarkerID),
     "model_id" / Computed(this.id * decodeModelID),
@@ -32,8 +33,8 @@ labeledMarkerStruct = Struct(
     "residual" / Float32l,
 )
 
-
-rigidBodyStruct = Struct(
+rigid_body = Struct(
+    "frame_number" / Default(Int32ul, 0),
     "id" / Int32ul,
     "pos_x" / Float32l,
     "pos_y" / Float32l,
@@ -46,3 +47,13 @@ rigidBodyStruct = Struct(
     "tracking" / Int16sl,
     "is_valid" / Computed(lambda ctx: (ctx.tracking & 0x01) != 0),
 )
+
+structs = {
+    "label": CString("utf8"),
+    "size": Int32ul,
+    "count": Int32ul,
+    "frame_number": Int32ul,
+    "unlabeled_marker": unlabeled_marker,
+    "labeled_marker": labeled_marker,
+    "rigid_body": rigid_body,
+}

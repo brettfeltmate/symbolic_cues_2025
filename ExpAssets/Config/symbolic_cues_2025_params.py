@@ -88,3 +88,14 @@ for likelihood in cue_ratios.keys():
         # second num represents invalidly cued trials
         for _ in range(int(cue_ratios[likelihood][laterality][1] * trials_per_cue)):
             trial_list.append((likelihood, laterality, False))
+
+velocity_threshold = 55  # mm / s
+movement_time_limit = 450  # ms
+
+v_offset = 21
+h_offset = 7.5
+circ_size = 3
+target_size = circ_size * 0.95
+fix_size = 4
+line_width = 0.2
+image_widtH = 4  # cms
