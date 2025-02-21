@@ -230,6 +230,9 @@ class symbolic_cues_2025(klibs.Experiment):
                 if not self.bounds.within_boundary(START, p=mouse_pos()):
                     raise TrialException('Moved before target onset')
 
+        else:
+            pass
+
         self.draw_display(target=True)
 
         # reached_to = None
