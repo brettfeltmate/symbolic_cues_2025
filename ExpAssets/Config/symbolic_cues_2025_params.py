@@ -8,7 +8,9 @@ manual_demographics_collection = False
 manual_trial_generation = False
 run_practice_blocks = True
 multi_user = False
-view_distance = 57  # in centimeters, 57cm = 1 deg of visual angle per cm of screen
+view_distance = (
+    57  # in centimeters, 57cm = 1 deg of visual angle per cm of screen
+)
 allow_hidpi = True
 
 #########################################
@@ -23,8 +25,8 @@ eye_tracking = False
 default_fill_color = (125, 125, 125, 255)
 default_color = (0, 0, 0, 255)
 default_font_size = 23
-default_font_unit = "px"
-default_font_name = "Hind-Medium"
+default_font_unit = 'px'
+default_font_name = 'Hind-Medium'
 
 #########################################
 # EyeLink Settings
@@ -57,21 +59,31 @@ dm_show_gaze_dot = True
 #########################################
 # Data Export Settings
 #########################################
-primary_table = "trials"
-unique_identifier = "userhash"
-exclude_data_cols = ["created"]
-append_info_cols = ["random_seed"]
-datafile_ext = ".txt"
+primary_table = 'trials'
+unique_identifier = 'userhash'
+exclude_data_cols = ['created']
+append_info_cols = ['random_seed']
+datafile_ext = '.txt'
 append_hostname = False
 
 #########################################
 # PROJECT-SPECIFIC VARS
 #########################################
 
-# Proportion, by cue type, of in/validly cued trials
-cue_ratios = {
-    "HIGH": {"LEFT": [0.80, 0.20], "RIGHT": [0.20, 0.80]},
-    "LOW": {"LEFT": [0.525, 0.475], "RIGHT": [0.475, 0.525]},
+# Opti/movement params #
+marker_count = 10
+window_size = 5  # num frames considered when calculating velocity
+rescaler = 1000  # rescale values from m to mm
+primary_axis = 'z'  # axis to consider for movement (for/back)
+velocity_threshold = 55  # req vel (mm / s) to be considered in-flight
+velocity_threshold_run = 5  # conseq times thresh met to trigger target
+movement_time_limit = 450  # movetime bound (ms) before trial abort
+query_stagger = window_size * (1000 / 120)  # time to wait between opti queries
+
+# Cue/exp params #
+cue_ratios = {  # Proportion, by cue type, of in/validly cued trials
+    'HIGH': {'LEFT': [0.80, 0.20], 'RIGHT': [0.20, 0.80]},
+    'LOW': {'LEFT': [0.525, 0.475], 'RIGHT': [0.475, 0.525]},
 }
 
 # generate trial sequence, with 40 trials per cue
@@ -82,16 +94,18 @@ trial_list = []
 for likelihood in cue_ratios.keys():
     for laterality in cue_ratios[likelihood].keys():
         # first number in array represents % of correctly cued trials
-        for _ in range(int(cue_ratios[likelihood][laterality][0] * trials_per_cue)):
+        for _ in range(
+            int(cue_ratios[likelihood][laterality][0] * trials_per_cue)
+        ):
             trial_list.append((likelihood, laterality, True))
 
         # second num represents invalidly cued trials
-        for _ in range(int(cue_ratios[likelihood][laterality][1] * trials_per_cue)):
+        for _ in range(
+            int(cue_ratios[likelihood][laterality][1] * trials_per_cue)
+        ):
             trial_list.append((likelihood, laterality, False))
 
-velocity_threshold = 55  # mm / s
-movement_time_limit = 450  # ms
-
+# visual params #
 v_offset = 21
 h_offset = 7.5
 circ_size = 3
@@ -99,3 +113,7 @@ target_size = circ_size * 0.95
 fix_size = 4
 line_width = 0.2
 image_widtH = 4  # cms
+
+# timing params #
+cue_onset = 500
+trial_time_max = 1500

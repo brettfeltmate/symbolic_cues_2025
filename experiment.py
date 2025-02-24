@@ -16,7 +16,7 @@ from klibs.KLGraphics import KLDraw as kld
 from klibs.KLGraphics import KLNumpySurface as kln
 from klibs.KLGraphics import blit, fill, flip
 from klibs.KLUserInterface import any_key, mouse_clicked, mouse_pos, ui_request
-from klibs.KLUtilities import pump
+from klibs.KLUtilities import pump, smart_sleep
 from optitracker.Optitracker import Optitracker  # type: ignore[import]
 from rich.console import Console
 
@@ -167,6 +167,11 @@ class symbolic_cues_2025(klibs.Experiment):
             - Target removed after <= 1,500 ms
                 - (is this a timeout?)
         """
+        self.trial_rt = None
+        self.trial_mt = None
+        self.trial_mt_max = None
+        self.trial_selected = None
+
         # get params for trial
         self.cue_odds, self.cued_side, self.cue_valid = self.trial_list.pop()
 
@@ -177,11 +182,16 @@ class symbolic_cues_2025(klibs.Experiment):
             self.target_side = RIGHT if self.cue_valid else LEFT
 
         # trial event timings
-        self.evm.add_event('cue_onset', 1500)
-        self.evm.add_event('target_off', 1500, after='cue_onset')
+        self.evm.add_event(
+            'cue_onset', P.cue_onset  # type: ignore[attr-defined]
+        )
 
         if P.development_mode:
             self.evm.add_event('target_onset', 500, after='cue_onset')
+
+        self.evm.add_event(
+            'trial_timeout', P.trial_time_max, after='cue_onset'  # type: ignore[attr-defined]
+        )
 
         # draw base display (starting position only)
         self.draw_display()
@@ -194,7 +204,6 @@ class symbolic_cues_2025(klibs.Experiment):
                 self.cued_side,
                 self.cue_valid,
                 self.target_side,
-                log_locals=True,
             )
 
         # begin trial when user touches start
@@ -210,6 +219,9 @@ class symbolic_cues_2025(klibs.Experiment):
         # boot up nnc
         self.opti.start_listening()
 
+        # give opti 5 frames of lead time
+        smart_sleep(P.query_stagger)  # type: ignore[attr-defined]
+
         if not self.opti.is_running:
             raise RuntimeError('Failed to start optitrack')
 
@@ -220,36 +232,80 @@ class symbolic_cues_2025(klibs.Experiment):
             q = pump(True)
             _ = ui_request(queue=q)
 
+            if self.opti.velocity() > P.velocity_threshold:  # type: ignore[attr-defined]
+                self.evm.stop_clock()
+
+                self.draw_display(
+                    msg='Please keep still until the cue appears'
+                )
+
+                raise TrialException('Moved before cue onset')
+
         self.draw_display(cue=True)
+        cue_onset = self.evm.trial_time_ms
 
-        if P.development_mode:
-            while self.evm.before('target_onset'):
-                q = pump(True)
-                _ = ui_request(queue=q)
+        target_visible = False
+        in_flight = False
+        n_times_at_thresh = 0
+        while self.evm.before('trial_timeout'):
+            velocity = self.opti.velocity()
+            if not in_flight:
+                if velocity >= P.velocity_threshold:  # type: ignore[attr-defined]
+                    if self.trial_rt is None:
+                        self.trial_rt = self.evm.trial_time_ms - cue_onset
+                        self.trial_mt_max = self.evm.trial_time_ms + P.movement_time_limit  # type: ignore[attr-defined]
+                        n_times_at_thresh += 1
 
-                if not self.bounds.within_boundary(START, p=mouse_pos()):
-                    raise TrialException('Moved before target onset')
+                    # stagger queries to prevent overlapping frames
+                    smart_sleep(P.query_stagger)  # type: ignore[attr-defined]
 
-        else:
-            pass
+                if n_times_at_thresh >= P.velocity_threshold_run:  # type: ignore[attr-defined]
+                    in_flight = True
 
-        self.draw_display(target=True)
+            if in_flight:
+                while self.evm.trial_time_ms < self.trial_mt_max:  # type: ignore[operator]
 
-        # reached_to = None
+                    # TODO: ask if we should abort on velocity reversal
 
-        # while reached_to is None:
-        any_key()
+                    if not target_visible:
+                        self.draw_display(target=True)
+                        target_visible = True
 
+                    cursor_pos = mouse_pos()
+                    which_bound = self.bounds.which_boundary(cursor_pos)
+
+                    if (
+                        which_bound in [LEFT, RIGHT]
+                        and self.trial_selected is None
+                    ):
+                        self.trial_selected = which_bound
+                        self.trial_mt = self.evm.trial_time_ms - self.trial_rt  # type: ignore[operator]
+                        break
+                    if self.trial_selected is not None:
+                        break
+                    else:
+                        self.evm.stop_clock()
+
+                        self.draw_display(msg='Too slow!')
+
+                        raise TrialException('Movement time bound exceeded')
+
+        # TODO: organize returned values
         return {'block_num': P.block_number, 'trial_num': P.trial_number}
 
     def trial_clean_up(self):
-        pass
+        # TODO: on TrialException, move opti file and log reason
+        self.opti.stop_listening()
 
     def clean_up(self):
-        pass
+        self.opti.stop_listening()
 
     def draw_display(
-        self, fix: bool = False, cue: bool = False, target: bool = False
+        self,
+        fix: bool = False,
+        cue: bool = False,
+        target: bool = False,
+        msg: str = '',
     ) -> None:
         fill()
 
@@ -276,4 +332,16 @@ class symbolic_cues_2025(klibs.Experiment):
                     registration=5,
                 )
 
+        else:
+            if msg:
+                message(
+                    msg,
+                    location=P.screen_c,
+                    registration=5,
+                    blit_txt=True,
+                )
+
         flip()
+
+        if msg:
+            smart_sleep(1000)
