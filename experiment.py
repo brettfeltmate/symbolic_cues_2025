@@ -15,7 +15,7 @@ from klibs.KLExceptions import TrialException
 from klibs.KLGraphics import KLDraw as kld
 from klibs.KLGraphics import KLNumpySurface as kln
 from klibs.KLGraphics import blit, fill, flip
-from klibs.KLUserInterface import any_key, mouse_clicked, mouse_pos, ui_request
+from klibs.KLUserInterface import any_key, mouse_pos, ui_request
 from klibs.KLUtilities import pump, smart_sleep
 from optitracker.Optitracker import Optitracker  # type: ignore[import]
 from rich.console import Console
@@ -31,20 +31,16 @@ CENTER = 'CENTER'
 
 class symbolic_cues_2025(klibs.Experiment):
     def setup(self):
-        """
-        Size & Positions:
-            - Start point = 3^2 cm, bottom-centre
-            - Fixation cross = 4^2 cm, placed 21 cm above start
-            - Placeholders: 3^2 cm, placed 7.5 cm to the left and right of fixation
-            - Cues: images
-
-            Image/cue mappings counter-balanced
-        """
         if P.development_mode:
             self.console = Console()
 
         # init optitracker
-        self.opti = Optitracker(marker_count=10)
+        self.opti = Optitracker(
+            marker_count=10,
+            window_size=P.window_size,  # type: ignore[attr-defined]
+            rescale_by=P.rescale_by,  # type: ignore[attr-defined]
+            primary_axis=P.primary_axis,  # type: ignore[attr-defined]
+        )
 
         # set up initial data directories for mocap recordings
         if not os.path.exists('OptiData'):
@@ -123,14 +119,14 @@ class symbolic_cues_2025(klibs.Experiment):
 
         # generate cue stimuli
         self.cues = {}
-        for likelihood in [HIGH, LOW]:
-            self.cues[likelihood] = {}
+        for reliability in [HIGH, LOW]:
+            self.cues[reliability] = {}
             for laterality in [RIGHT, LEFT]:
                 # load images and make presentable
                 image_path = (
                     f'ExpAssets/Resources/image/{cue_image_names.pop()}.jpg'
                 )
-                self.cues[likelihood][laterality] = kln.NumpySurface(
+                self.cues[reliability][laterality] = kln.NumpySurface(
                     content=image_path,
                     width=int(P.image_width * self.px_cm),  # type: ignore[attr-defined]
                 )
@@ -158,85 +154,77 @@ class symbolic_cues_2025(klibs.Experiment):
         any_key()
 
     def trial_prep(self):
-        """
-        Procedure:
-            - Touch start
-            - On touch, present fixation & placeholders
-            - After 500 ms, cue
-            - Reach begins
-            - Target removed after <= 1,500 ms
-                - (is this a timeout?)
-        """
+        # superstitiously ensure mouse does not start within any boundaries
+        mouse_pos(position=P.screen_c)
+
         self.trial_rt = None
         self.trial_mt = None
         self.trial_mt_max = None
         self.trial_selected = None
 
-        # get params for trial
-        self.cue_odds, self.cued_side, self.cue_valid = self.trial_list.pop()
+        (  # get params for trial
+            self.cue_reliability,
+            self.cue_laterality,
+            self.cue_validity,
+        ) = self.trial_list.pop()
 
-        # use cue validity to set target position
-        if self.cued_side == LEFT:
-            self.target_side = LEFT if self.cue_valid else RIGHT
+        # set target pos as function of cue validity
+        if self.cue_laterality == LEFT:
+            self.target_side = LEFT if self.cue_validity else RIGHT
         else:
-            self.target_side = RIGHT if self.cue_valid else LEFT
+            self.target_side = RIGHT if self.cue_validity else LEFT
 
         # trial event timings
-        self.evm.add_event(
-            'cue_onset', P.cue_onset  # type: ignore[attr-defined]
-        )
+        self.evm.add_event('cue_onset', P.cue_onset)  # type: ignore[attr-defined]
 
         if P.development_mode:
             self.evm.add_event('target_onset', 500, after='cue_onset')
 
-        self.evm.add_event(
-            'trial_timeout', P.trial_time_max, after='cue_onset'  # type: ignore[attr-defined]
-        )
+        self.evm.add_event('trial_timeout', P.trial_time_max, after='cue_onset')  # type: ignore[attr-defined]
 
         # draw base display (starting position only)
         self.draw_display()
 
         if P.development_mode:
-            print('----------------------------')
-            print('\n\ntrial_prep()\n\n')
             self.console.log(
-                self.cue_odds,
-                self.cued_side,
-                self.cue_valid,
+                self.cue_reliability,
+                self.cue_laterality,
+                self.cue_validity,
                 self.target_side,
             )
 
-        # begin trial when user touches start
-        while True:
+        # trial started by touching start position
+        while not self.bounds.which_boundary(mouse_pos()) == START:
             q = pump(True)
             _ = ui_request(queue=q)
 
-            if mouse_clicked(within=self.bounds.boundaries[START], queue=q):
-                break
-
         self.draw_display(fix=True)
 
-        # boot up nnc
+        # plug into NatNet stream
         self.opti.start_listening()
 
         # give opti 5 frames of lead time
         smart_sleep(P.query_stagger)  # type: ignore[attr-defined]
 
-        if not self.opti.is_running:
-            raise RuntimeError('Failed to start optitrack')
-
     def trial(self):  # type: ignore[override]
+
+        # Ensure opti is listening
+        if not self.opti.is_listening():
+            raise RuntimeError('Failed to connect to OptiTrack system')
 
         while self.evm.before('trial_timeout'):
 
-            # pre-cue #
-            ###########
+            #############
+            # cue phase #
+            #############
+
             while self.evm.before('cue_onset'):
                 q = pump(True)
                 _ = ui_request(queue=q)
 
-                # admonish any movements made before cue onset
+                # admonish any sizable pre-cue movement
                 if self.opti.velocity() > P.velocity_threshold:  # type: ignore[attr-defined]
+                    self.opti.stop_listening()
                     self.evm.stop_clock()
 
                     self.draw_display(
@@ -244,22 +232,19 @@ class symbolic_cues_2025(klibs.Experiment):
                     )
 
                     raise TrialException('Pre-emptive movement')
-            ###
 
-
-            # cue #
-            #######
             self.draw_display(cue=True)
             cue_on_at = self.evm.trial_time_ms
-            ###
+            ########################
 
+            ################
+            # target phase #
+            ################
 
-            # pre-target #
-            ##############
             target_visible = False
             n_times_at_thresh = 0
 
-            # Monitor velocity until target blit rules are satistfied
+            # Trigger target onset if-and-only-if velocity criteria are met
             while n_times_at_thresh < P.velocity_threshold_run:  # type: ignore[attr-defined]
 
                 velocity = self.opti.velocity()
@@ -270,60 +255,79 @@ class symbolic_cues_2025(klibs.Experiment):
                 # HACK: stagger queries to prevent overlapping frames (this could be problematic...)
                 smart_sleep(P.query_stagger)  # type: ignore[attr-defined]
 
-            # Consider RT to be time from cue to movement onset
+            # rt = delay between cue onset and meeting movement criteria
             self.trial_rt = self.evm.trial_time_ms - cue_on_at
 
-            # Determine max movement time relative to RT
+            # max mt = rt + movement_time_limit
             self.trial_mt_max = self.evm.trial_time_ms + P.movement_time_limit  # type: ignore[attr-defined]
-            ###
 
-            # target/reach #
-            ###############
+            # draw target
+            self.draw_display(target=True)
+            ########################
 
-            # Monitor reach progress until movement complete or timeout
+            ##################
+            # response phase #
+            ##################
+
+            # Monitor reach kinematics until movement complete or timeout
             while self.evm.trial_time_ms < self.trial_mt_max:  # type: ignore[operator]
 
                 velocity = self.opti.velocity()
 
-                # Admoinish if participant "pulls back"
-                if velocity < 0:
+                # Admoinish any hesitations
+                if (
+                    velocity <= P.velocity_threshold  # type: ignore[attr-defined]
+                ):
+                    self.opti.stop_listening()
                     self.evm.stop_clock()
+
                     self.draw_display(
                         msg="Please don't pause or pull back until reach is completed"
                     )
+
                     raise TrialException('Early reach termination')
 
-                # Draw target if not already visible
-                if not target_visible:
-                    self.draw_display(target=True)
-                    target_visible = True
-
-                # NOTE: targets are selected by making contact with a touchscreen
-                cursor_pos = mouse_pos()
-                which_bound = self.bounds.which_boundary(cursor_pos)
+                # NOTE: targets are selected via touchscreen
+                which_bound = self.bounds.which_boundary(mouse_pos())
 
                 # If target touched, log selection & mt, break out of trial loop
                 if which_bound in [LEFT, RIGHT]:
                     self.trial_selected = which_bound
                     self.trial_mt = self.evm.trial_time_ms - self.trial_rt - cue_on_at  # type: ignore[operator]
                     break
-
             break
 
+        self.opti.stop_listening()
+
         if self.trial_selected is None:
-            self.draw_display(msg='Movement timed out! Please try to be quicker.')
+            self.draw_display(
+                msg='Movement timed out! Please try to be quicker.'
+            )
             raise TrialException('Movement timed out')
 
-
         # TODO: organize returned values
-        return {'block_num': P.block_number, 'trial_num': P.trial_number}
+        return {
+            'practicing': P.practicing,
+            'block_num': P.block_number,
+            'trial_num': P.trial_number,
+            'cue_reliability': self.cue_validity,
+            'cue_laterality': self.cue_laterality,
+            'cue_validity': self.cue_validity,
+            'reaction_time': self.trial_rt if not None else 'NA',
+            'movement_time': self.trial_mt if not None else 'NA',
+            'touched_target': self.trial_selected == self.target_side
+            if self.trial_selected is not None
+            else 'NA',
+        }
 
     def trial_clean_up(self):
         # TODO: on TrialException, move opti file and log reason
-        self.opti.stop_listening()
+        if self.opti.is_listening():
+            self.opti.stop_listening()
 
     def clean_up(self):
-        self.opti.stop_listening()
+        if self.opti.is_listening():
+            self.opti.stop_listening()
 
     def draw_display(
         self,
@@ -345,7 +349,7 @@ class symbolic_cues_2025(klibs.Experiment):
 
             if cue:
                 blit(
-                    self.cues[self.cue_odds][self.cued_side],
+                    self.cues[self.cue_reliability][self.cue_laterality],
                     location=self.locs[CENTER],
                     registration=5,
                 )

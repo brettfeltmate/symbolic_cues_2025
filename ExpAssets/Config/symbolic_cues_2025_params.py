@@ -73,7 +73,7 @@ append_hostname = False
 # Opti/movement params #
 marker_count = 10
 window_size = 5  # num frames considered when calculating velocity
-rescaler = 1000  # rescale values from m to mm
+rescale_by = 1000  # rescale values from m to mm
 primary_axis = 'z'  # axis to consider for movement (for/back)
 velocity_threshold = 55  # req vel (mm / s) to be considered in-flight
 velocity_threshold_run = 5  # conseq times thresh met to trigger target
@@ -81,7 +81,7 @@ movement_time_limit = 450  # movetime bound (ms) before trial abort
 query_stagger = window_size * (1000 / 120)  # time to wait between opti queries
 
 # Cue/exp params #
-cue_ratios = {  # Proportion, by cue type, of in/validly cued trials
+cue_types = {  # Proportion, by cue type, of in/validly cued trials
     'HIGH': {'LEFT': [0.80, 0.20], 'RIGHT': [0.20, 0.80]},
     'LOW': {'LEFT': [0.525, 0.475], 'RIGHT': [0.475, 0.525]},
 }
@@ -91,19 +91,19 @@ cue_ratios = {  # Proportion, by cue type, of in/validly cued trials
 # probability matches their actual probability (of cuing target)
 trial_list = []
 
-for likelihood in cue_ratios.keys():
-    for laterality in cue_ratios[likelihood].keys():
+for reliability in cue_types.keys():
+    for laterality in cue_types[reliability].keys():
         # first number in array represents % of correctly cued trials
         for _ in range(
-            int(cue_ratios[likelihood][laterality][0] * trials_per_cue)
+            int(cue_types[reliability][laterality][0] * trials_per_cue)
         ):
-            trial_list.append((likelihood, laterality, True))
+            trial_list.append((reliability, laterality, True))
 
         # second num represents invalidly cued trials
         for _ in range(
-            int(cue_ratios[likelihood][laterality][1] * trials_per_cue)
+            int(cue_types[reliability][laterality][1] * trials_per_cue)
         ):
-            trial_list.append((likelihood, laterality, False))
+            trial_list.append((reliability, laterality, False))
 
 # visual params #
 v_offset = 21

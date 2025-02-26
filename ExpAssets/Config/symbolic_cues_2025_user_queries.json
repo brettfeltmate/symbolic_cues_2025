@@ -26,10 +26,10 @@
             "active": true
         },
         {
-            "title": "gender",
-            "database_field": "gender",
-            "query": "What is your gender?\nAnswer with: (m)ale, (f)emale, or (n)on-binary",
-            "accepted": ["m", "f", "n"],
+            "title": "sex",
+            "database_field": "sex",
+            "query": "What is your birth-sex?\nAnswer with: (m)ale, (f)emale, or (i)ntersex",
+            "accepted": ["m", "f", "i"],
             "allow_null": false,
             "format": {
                 "type": "str",
@@ -41,13 +41,13 @@
                 "accept_as_true": null,
                 "action": null
             },
-            "anonymous_value": "n",
+            "anonymous_value": "i",
             "active": true
         },
         {
             "title": "handedness",
             "database_field": "handedness",
-            "query": "Are you right-handed, left-handed or ambidextrous?\nAnswer with: (r)ight, (l)eft, or (a)mbidextrous",
+            "query": "Are you right-handed, left-handed or ambidextrous?\nAnswer with: (r)ight, (l)eft, or (a)mbidextrous.",
             "accepted": ["r", "l", "a"],
             "allow_null": false,
             "format": {
