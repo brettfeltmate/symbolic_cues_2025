@@ -226,69 +226,94 @@ class symbolic_cues_2025(klibs.Experiment):
             raise RuntimeError('Failed to start optitrack')
 
     def trial(self):  # type: ignore[override]
-        # do nothing for now
-        while self.evm.before('cue_onset'):
-            # but also don't lock up computer
-            q = pump(True)
-            _ = ui_request(queue=q)
 
-            if self.opti.velocity() > P.velocity_threshold:  # type: ignore[attr-defined]
-                self.evm.stop_clock()
-
-                self.draw_display(
-                    msg='Please keep still until the cue appears'
-                )
-
-                raise TrialException('Moved before cue onset')
-
-        self.draw_display(cue=True)
-        cue_onset = self.evm.trial_time_ms
-
-        target_visible = False
-        in_flight = False
-        n_times_at_thresh = 0
         while self.evm.before('trial_timeout'):
-            velocity = self.opti.velocity()
-            if not in_flight:
+
+            # pre-cue #
+            ###########
+            while self.evm.before('cue_onset'):
+                q = pump(True)
+                _ = ui_request(queue=q)
+
+                # admonish any movements made before cue onset
+                if self.opti.velocity() > P.velocity_threshold:  # type: ignore[attr-defined]
+                    self.evm.stop_clock()
+
+                    self.draw_display(
+                        msg='Please keep still until the cue appears'
+                    )
+
+                    raise TrialException('Pre-emptive movement')
+            ###
+
+
+            # cue #
+            #######
+            self.draw_display(cue=True)
+            cue_on_at = self.evm.trial_time_ms
+            ###
+
+
+            # pre-target #
+            ##############
+            target_visible = False
+            n_times_at_thresh = 0
+
+            # Monitor velocity until target blit rules are satistfied
+            while n_times_at_thresh < P.velocity_threshold_run:  # type: ignore[attr-defined]
+
+                velocity = self.opti.velocity()
+
                 if velocity >= P.velocity_threshold:  # type: ignore[attr-defined]
-                    if self.trial_rt is None:
-                        self.trial_rt = self.evm.trial_time_ms - cue_onset
-                        self.trial_mt_max = self.evm.trial_time_ms + P.movement_time_limit  # type: ignore[attr-defined]
-                        n_times_at_thresh += 1
+                    n_times_at_thresh += 1
 
-                    # stagger queries to prevent overlapping frames
-                    smart_sleep(P.query_stagger)  # type: ignore[attr-defined]
+                # HACK: stagger queries to prevent overlapping frames (this could be problematic...)
+                smart_sleep(P.query_stagger)  # type: ignore[attr-defined]
 
-                if n_times_at_thresh >= P.velocity_threshold_run:  # type: ignore[attr-defined]
-                    in_flight = True
+            # Consider RT to be time from cue to movement onset
+            self.trial_rt = self.evm.trial_time_ms - cue_on_at
 
-            if in_flight:
-                while self.evm.trial_time_ms < self.trial_mt_max:  # type: ignore[operator]
+            # Determine max movement time relative to RT
+            self.trial_mt_max = self.evm.trial_time_ms + P.movement_time_limit  # type: ignore[attr-defined]
+            ###
 
-                    # TODO: ask if we should abort on velocity reversal
+            # target/reach #
+            ###############
 
-                    if not target_visible:
-                        self.draw_display(target=True)
-                        target_visible = True
+            # Monitor reach progress until movement complete or timeout
+            while self.evm.trial_time_ms < self.trial_mt_max:  # type: ignore[operator]
 
-                    cursor_pos = mouse_pos()
-                    which_bound = self.bounds.which_boundary(cursor_pos)
+                velocity = self.opti.velocity()
 
-                    if (
-                        which_bound in [LEFT, RIGHT]
-                        and self.trial_selected is None
-                    ):
-                        self.trial_selected = which_bound
-                        self.trial_mt = self.evm.trial_time_ms - self.trial_rt  # type: ignore[operator]
-                        break
-                    if self.trial_selected is not None:
-                        break
-                    else:
-                        self.evm.stop_clock()
+                # Admoinish if participant "pulls back"
+                if velocity < 0:
+                    self.evm.stop_clock()
+                    self.draw_display(
+                        msg="Please don't pause or pull back until reach is completed"
+                    )
+                    raise TrialException('Early reach termination')
 
-                        self.draw_display(msg='Too slow!')
+                # Draw target if not already visible
+                if not target_visible:
+                    self.draw_display(target=True)
+                    target_visible = True
 
-                        raise TrialException('Movement time bound exceeded')
+                # NOTE: targets are selected by making contact with a touchscreen
+                cursor_pos = mouse_pos()
+                which_bound = self.bounds.which_boundary(cursor_pos)
+
+                # If target touched, log selection & mt, break out of trial loop
+                if which_bound in [LEFT, RIGHT]:
+                    self.trial_selected = which_bound
+                    self.trial_mt = self.evm.trial_time_ms - self.trial_rt - cue_on_at  # type: ignore[operator]
+                    break
+
+            break
+
+        if self.trial_selected is None:
+            self.draw_display(msg='Movement timed out! Please try to be quicker.')
+            raise TrialException('Movement timed out')
+
 
         # TODO: organize returned values
         return {'block_num': P.block_number, 'trial_num': P.trial_number}
