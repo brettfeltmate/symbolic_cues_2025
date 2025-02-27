@@ -45,8 +45,8 @@ multi_session_project = False
 blocks_per_experiment = 1
 trials_per_cue = 40
 trials_per_block = trials_per_cue * 4
-conditions = []
-default_condition = None
+conditions = ["opti", "mouse"]
+default_condition = "opti"
 
 #########################################
 # Development Mode Settings

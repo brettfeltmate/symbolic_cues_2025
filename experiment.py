@@ -17,7 +17,7 @@ from klibs.KLGraphics import KLNumpySurface as kln
 from klibs.KLGraphics import blit, fill, flip
 from klibs.KLUserInterface import any_key, mouse_pos, ui_request
 from klibs.KLUtilities import pump, smart_sleep
-from optitracker.Optitracker import Optitracker  # type: ignore[import]
+from Optitracker.optitracker.OptiTracker import Optitracker
 from rich.console import Console
 
 BLACK = (0, 0, 0, 255)
@@ -27,7 +27,6 @@ LEFT = 'LEFT'
 RIGHT = 'RIGHT'
 START = 'START'
 CENTER = 'CENTER'
-
 
 class symbolic_cues_2025(klibs.Experiment):
     def setup(self):
@@ -40,6 +39,7 @@ class symbolic_cues_2025(klibs.Experiment):
             window_size=P.window_size,  # type: ignore[attr-defined]
             rescale_by=P.rescale_by,  # type: ignore[attr-defined]
             primary_axis=P.primary_axis,  # type: ignore[attr-defined]
+            use_mouse=P.condition == "mouse",  # type: ignore[attr-defined]
         )
 
         # set up initial data directories for mocap recordings
@@ -177,9 +177,6 @@ class symbolic_cues_2025(klibs.Experiment):
         # trial event timings
         self.evm.add_event('cue_onset', P.cue_onset)  # type: ignore[attr-defined]
 
-        if P.development_mode:
-            self.evm.add_event('target_onset', 500, after='cue_onset')
-
         self.evm.add_event('trial_timeout', P.trial_time_max, after='cue_onset')  # type: ignore[attr-defined]
 
         # draw base display (starting position only)
@@ -206,11 +203,12 @@ class symbolic_cues_2025(klibs.Experiment):
         # give opti 5 frames of lead time
         smart_sleep(P.query_stagger)  # type: ignore[attr-defined]
 
+        # Ensure opti is listening
+        if not self.opti.is_listening() and not P.development_mode:
+            raise RuntimeError('Failed to connect to OptiTrack system')
+
     def trial(self):  # type: ignore[override]
 
-        # Ensure opti is listening
-        if not self.opti.is_listening():
-            raise RuntimeError('Failed to connect to OptiTrack system')
 
         while self.evm.before('trial_timeout'):
 
