@@ -1,4 +1,3 @@
 [submodule "ExpAssets/Resources/code/Optitracker"]
 	path = ExpAssets/Resources/code/Optitracker
 	url = https://github.com/brettfeltmate/Optitracker.git
-	branch = add_mouse_input_mode

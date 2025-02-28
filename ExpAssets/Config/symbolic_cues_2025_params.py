@@ -77,7 +77,7 @@ rescale_by = 1000  # rescale values from m to mm
 primary_axis = 'z'  # axis to consider for movement (for/back)
 velocity_threshold = 55  # req vel (mm / s) to be considered in-flight
 velocity_threshold_run = 5  # conseq times thresh met to trigger target
-movement_time_limit = 450  # movetime bound (ms) before trial abort
+movement_time_limit = 450 # movetime bound (ms) before trial abort
 query_stagger = window_size * (1000 / 120)  # time to wait between opti queries
 
 # Cue/exp params #
@@ -112,7 +112,7 @@ circ_size = 3
 target_size = circ_size * 0.95
 fix_size = 4
 line_width = 0.2
-image_widtH = 4  # cms
+image_width = 4  # cms
 
 # timing params #
 cue_onset = 500

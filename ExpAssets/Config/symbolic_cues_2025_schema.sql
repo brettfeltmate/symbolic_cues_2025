@@ -18,5 +18,5 @@ CREATE TABLE trials (
     cue_validity text not null,
     reaction_time text not null,
     movement_time text not null,
-    touched_target text not null,
+    touched_target text not null
 );

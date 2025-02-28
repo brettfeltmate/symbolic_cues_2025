@@ -15,7 +15,7 @@ from klibs.KLExceptions import TrialException
 from klibs.KLGraphics import KLDraw as kld
 from klibs.KLGraphics import KLNumpySurface as kln
 from klibs.KLGraphics import blit, fill, flip
-from klibs.KLUserInterface import any_key, mouse_pos, ui_request
+from klibs.KLUserInterface import any_key, mouse_pos, ui_request, show_cursor
 from klibs.KLUtilities import pump, smart_sleep
 from Optitracker.optitracker.OptiTracker import Optitracker
 from rich.console import Console
@@ -40,17 +40,22 @@ class symbolic_cues_2025(klibs.Experiment):
             rescale_by=P.rescale_by,  # type: ignore[attr-defined]
             primary_axis=P.primary_axis,  # type: ignore[attr-defined]
             use_mouse=P.condition == "mouse",  # type: ignore[attr-defined]
+            display_ppi=P.ppi,  # type: ignore[attr-defined]
         )
 
-        # set up initial data directories for mocap recordings
-        if not os.path.exists('OptiData'):
-            os.mkdir('OptiData')
-            os.mkdir('OptiData/testing')
-            os.mkdir(f'OptiData/testing/{P.p_id}')
+        if P.condition != 'mouse':
+            # set up initial data directories for mocap recordings
+            if not os.path.exists('OptiData'):
+                os.mkdir('OptiData')
+                os.mkdir('OptiData/testing')
+                os.mkdir(f'OptiData/testing/{P.p_id}')
 
-        if P.run_practice_blocks:
-            os.mkdir('OptiData/practice')
-            os.mkdir(f'OptiData/practice/{P.p_id}')
+            if P.run_practice_blocks:
+                os.mkdir('OptiData/practice')
+                os.mkdir(f'OptiData/practice/{P.p_id}')
+
+        else:
+            P.movement_time_limit = 1000  # type: ignore[attr-defined]
 
         # get base unit for sizings & positionings
         self.px_cm = P.ppi / 2.54
@@ -136,11 +141,6 @@ class symbolic_cues_2025(klibs.Experiment):
 
         shuffle(self.trial_list)
 
-        if P.development_mode:
-            print('--------------------------------')
-            print('\n\nsetup()\n\n')
-            self.console.log(self.cues, self.trial_list, log_locals=True)
-
     def block(self):
         fill()
         message(
@@ -209,6 +209,9 @@ class symbolic_cues_2025(klibs.Experiment):
 
     def trial(self):  # type: ignore[override]
 
+        if P.condition == "mouse":
+            show_cursor()
+
 
         while self.evm.before('trial_timeout'):
 
@@ -239,7 +242,6 @@ class symbolic_cues_2025(klibs.Experiment):
             # target phase #
             ################
 
-            target_visible = False
             n_times_at_thresh = 0
 
             # Trigger target onset if-and-only-if velocity criteria are met
@@ -268,22 +270,29 @@ class symbolic_cues_2025(klibs.Experiment):
             ##################
 
             # Monitor reach kinematics until movement complete or timeout
+            times_below_thresh = 0
             while self.evm.trial_time_ms < self.trial_mt_max:  # type: ignore[operator]
 
                 velocity = self.opti.velocity()
 
                 # Admoinish any hesitations
                 if (
-                    velocity <= P.velocity_threshold  # type: ignore[attr-defined]
+                    velocity < P.velocity_threshold  # type: ignore[attr-defined]
                 ):
-                    self.opti.stop_listening()
-                    self.evm.stop_clock()
+                    times_below_thresh += 1
+                    if times_below_thresh == P.velocity_threshold_run:  # type: ignore[attr-defined]
+                        self.opti.stop_listening()
+                        self.evm.stop_clock()
 
-                    self.draw_display(
-                        msg="Please don't pause or pull back until reach is completed"
-                    )
+                        self.draw_display(
+                            msg="Please don't pause or pull back until reach is completed"
+                        )
 
-                    raise TrialException('Early reach termination')
+                        raise TrialException('Early reach termination')
+                    
+                    smart_sleep(P.query_stagger)  # type: ignore[attr-defined]
+
+
 
                 # NOTE: targets are selected via touchscreen
                 which_bound = self.bounds.which_boundary(mouse_pos())
