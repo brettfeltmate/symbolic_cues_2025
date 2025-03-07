@@ -15,7 +15,13 @@ from klibs.KLExceptions import TrialException
 from klibs.KLGraphics import KLDraw as kld
 from klibs.KLGraphics import KLNumpySurface as kln
 from klibs.KLGraphics import blit, fill, flip
-from klibs.KLUserInterface import any_key, mouse_pos, ui_request, show_cursor, hide_cursor
+from klibs.KLUserInterface import (
+    any_key,
+    mouse_pos,
+    ui_request,
+    show_cursor,
+    hide_cursor,
+)
 from klibs.KLUtilities import pump, smart_sleep
 from Optitracker.optitracker.OptiTracker import Optitracker  # type: ignore[import]
 from rich.console import Console
@@ -28,6 +34,7 @@ RIGHT = 'RIGHT'
 START = 'START'
 CENTER = 'CENTER'
 
+
 class symbolic_cues_2025(klibs.Experiment):
     def setup(self):
         if P.development_mode:
@@ -39,10 +46,9 @@ class symbolic_cues_2025(klibs.Experiment):
             window_size=P.window_size,  # type: ignore[attr-defined]
             rescale_by=P.rescale_by,  # type: ignore[attr-defined]
             primary_axis=P.primary_axis,  # type: ignore[attr-defined]
-            use_mouse=P.condition == "mouse",  # type: ignore[attr-defined]
+            use_mouse=P.condition == 'mouse',  # type: ignore[attr-defined]
             display_ppi=P.ppi,  # type: ignore[attr-defined]
         )
-
 
         if P.condition != 'mouse':
             # set up initial data directories for mocap recordings
@@ -59,8 +65,8 @@ class symbolic_cues_2025(klibs.Experiment):
             P.movement_time_limit = 1000  # type: ignore[attr-defined]
 
         if P.development_mode:
-            if os.path.exists("OptiData/velocity_log.txt"):
-                os.remove("OptiData/velocity_log.txt")
+            if os.path.exists('OptiData/velocity_log.txt'):
+                os.remove('OptiData/velocity_log.txt')
 
         # get base unit for sizings & positionings
         self.px_cm = P.ppi / 2.54
@@ -214,11 +220,10 @@ class symbolic_cues_2025(klibs.Experiment):
 
     def trial(self):  # type: ignore[override]
 
-        if P.condition == "mouse":
+        if P.condition == 'mouse':
             show_cursor()
         else:
             hide_cursor()
-
 
         while self.evm.before('trial_timeout'):
 
@@ -257,8 +262,8 @@ class symbolic_cues_2025(klibs.Experiment):
                 velocity = self.opti.velocity()
 
                 if P.development_mode:
-                    with open("OptiData/velocity_log.txt", "a") as f:
-                        f.write(str(velocity) + "\n")
+                    with open('OptiData/velocity_log.txt', 'a') as f:
+                        f.write(str(velocity) + '\n')
 
                 if velocity >= P.velocity_threshold:  # type: ignore[attr-defined]
                     n_times_at_thresh += 1
@@ -300,10 +305,8 @@ class symbolic_cues_2025(klibs.Experiment):
                         )
 
                         raise TrialException('Early reach termination')
-                    
+
                     smart_sleep(P.query_stagger)  # type: ignore[attr-defined]
-
-
 
                 # NOTE: targets are selected via touchscreen
                 which_bound = self.bounds.which_boundary(mouse_pos())
