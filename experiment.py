@@ -15,7 +15,7 @@ from klibs.KLExceptions import TrialException
 from klibs.KLGraphics import KLDraw as kld
 from klibs.KLGraphics import KLNumpySurface as kln
 from klibs.KLGraphics import blit, fill, flip
-from klibs.KLUserInterface import any_key, mouse_pos, ui_request, show_cursor
+from klibs.KLUserInterface import any_key, mouse_pos, ui_request, show_cursor, hide_cursor
 from klibs.KLUtilities import pump, smart_sleep
 from Optitracker.optitracker.OptiTracker import Optitracker  # type: ignore[import]
 from rich.console import Console
@@ -216,6 +216,8 @@ class symbolic_cues_2025(klibs.Experiment):
 
         if P.condition == "mouse":
             show_cursor()
+        else:
+            hide_cursor()
 
 
         while self.evm.before('trial_timeout'):
