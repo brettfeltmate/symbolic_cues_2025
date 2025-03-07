@@ -50,6 +50,8 @@ class symbolic_cues_2025(klibs.Experiment):
             display_ppi=P.ppi,  # type: ignore[attr-defined]
         )
 
+        self.data_dir = "OptiData"
+
         if P.condition != 'mouse':
             # set up initial data directories for mocap recordings
             if not os.path.exists('OptiData'):
@@ -153,6 +155,16 @@ class symbolic_cues_2025(klibs.Experiment):
         shuffle(self.trial_list)
 
     def block(self):
+        if P.practicing:
+            self.block_dir = f'OptiData/practice/{P.p_id}/Block_{P.block_number}'
+            if not os.path.exists(self.block_dir):
+                os.mkdir(self.block_dir)
+
+        else:
+            self.block_dir = f'OptiData/testing/{P.p_id}/Block_{P.block_number}'
+            if not os.path.exists(self.block_dir):
+                os.mkdir(self.block_dir)
+
         fill()
         message(
             'instructions go here\n\nany key to start block',
@@ -165,6 +177,8 @@ class symbolic_cues_2025(klibs.Experiment):
         any_key()
 
     def trial_prep(self):
+        self.opti.data_dir = self.block_dir + f'/Trial_{P.trial_number}.csv'
+
         # superstitiously ensure mouse does not start within any boundaries
         mouse_pos(position=P.screen_c)
 
