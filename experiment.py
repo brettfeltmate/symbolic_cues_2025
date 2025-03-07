@@ -43,6 +43,7 @@ class symbolic_cues_2025(klibs.Experiment):
             display_ppi=P.ppi,  # type: ignore[attr-defined]
         )
 
+
         if P.condition != 'mouse':
             # set up initial data directories for mocap recordings
             if not os.path.exists('OptiData'):
@@ -56,6 +57,10 @@ class symbolic_cues_2025(klibs.Experiment):
 
         else:
             P.movement_time_limit = 1000  # type: ignore[attr-defined]
+
+        if P.development_mode:
+            if os.path.exists("OptiData/velocity_log.txt"):
+                os.remove("OptiData/velocity_log.txt")
 
         # get base unit for sizings & positionings
         self.px_cm = P.ppi / 2.54
@@ -248,6 +253,10 @@ class symbolic_cues_2025(klibs.Experiment):
             while n_times_at_thresh < P.velocity_threshold_run:  # type: ignore[attr-defined]
 
                 velocity = self.opti.velocity()
+
+                if P.development_mode:
+                    with open("OptiData/velocity_log.txt", "a") as f:
+                        f.write(str(velocity) + "\n")
 
                 if velocity >= P.velocity_threshold:  # type: ignore[attr-defined]
                     n_times_at_thresh += 1
