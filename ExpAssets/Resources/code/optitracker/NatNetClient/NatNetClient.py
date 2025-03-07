@@ -80,6 +80,8 @@ class NatNetClient:
 
         self.settings.update(instance_settings)
 
+        self.marker_listener = None
+
         self.listeners = {
             'prefix': None,
             'marker': None,
@@ -134,13 +136,15 @@ class NatNetClient:
 
             n_markers_in_set, _ = parse.count()
 
-            if self.listeners['marker'] is not None:
+            # if self.listeners['marker'] is not None:
+            if self.marker_listener is not None:
                 for _ in range(n_markers_in_set):
                     marker, _ = parse.struct('unlabeled_marker')
                     marker['frame_number'] = frame_number  # type: ignore
                     marker_set['markers'].append(marker)
 
-                self.listeners['marker'](marker_set)
+                # self.listeners['marker'](marker_set)
+                self.marker_listener(marker_set)
 
             else:
                 parse.seek(by=parse.size('marker', n_markers_in_set))

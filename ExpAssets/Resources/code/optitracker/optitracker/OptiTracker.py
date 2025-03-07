@@ -114,7 +114,8 @@ class Optitracker(object):
 
         if init_natnet:
             self.__natnet = NatNetClient()
-            self.__natnet.listeners['marker'] = self.__write  # type: ignore
+            # self.__natnet.listeners['marker'] = self.__write  # type: ignore
+            self.__natnet.marker_listener = self.__write
 
         if primary_axis == '' or primary_axis is None:
             raise ValueError('Primary axis must be specified.')
