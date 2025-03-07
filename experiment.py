@@ -17,7 +17,7 @@ from klibs.KLGraphics import KLNumpySurface as kln
 from klibs.KLGraphics import blit, fill, flip
 from klibs.KLUserInterface import any_key, mouse_pos, ui_request, show_cursor
 from klibs.KLUtilities import pump, smart_sleep
-from Optitracker.optitracker.OptiTracker import Optitracker
+from Optitracker.optitracker.OptiTracker import Optitracker  # type: ignore[import]
 from rich.console import Console
 
 BLACK = (0, 0, 0, 255)
