@@ -56,8 +56,11 @@ class symbolic_cues_2025(klibs.Experiment):
             # set up initial data directories for mocap recordings
             if not os.path.exists('OptiData'):
                 os.mkdir('OptiData')
+
+            if not os.path.exists('OptiData/testing'):
                 os.mkdir('OptiData/testing')
-                os.mkdir(f'OptiData/testing/{P.p_id}')
+
+            os.mkdir(f'OptiData/testing/{P.p_id}')
 
             if P.run_practice_blocks:
                 if not os.path.exists('OptiData/practice'):
