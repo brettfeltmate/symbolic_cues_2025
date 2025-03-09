@@ -290,7 +290,7 @@ class Optitracker(object):
 
         velocities = self.__calc_vector_velocity(frames, axis)
 
-        return np.mean(velocities['velocity'], dtype=np.float64)  # type: ignore
+        return -np.mean(velocities['velocity'], dtype=np.float64)  # type: ignore
 
     def position(
         self,
@@ -596,6 +596,8 @@ class Optitracker(object):
             marker_set (dict): Dictionary containing marker data to be written.
                 Expected format: {'markers': [{'key1': val1, ...}, ...]}
         """
+        # print("__write()")
+
         if self.__use_mouse:
             frames = self.__get_mouse_position()
             fname = self.__data_dir
@@ -615,18 +617,21 @@ class Optitracker(object):
         else:
             # if type(frames) is dict:
             if frames.get('label') == 'hand':
+                # print("__write | hand")
                 # Append data to trial-specific CSV file
                 fname = self.__data_dir
                 header = list(frames['markers'][0].keys())
 
                 # if file doesn't exist, create it and write header
                 if not os.path.exists(fname):
+                    # print("__write | headers")
                     with open(fname, 'w', newline='') as file:
                         writer = DictWriter(file, fieldnames=header)
                         writer.writeheader()
 
                 # append marker data to file
                 with open(fname, 'a', newline='') as file:
+                    # print("__write | markers")
                     writer = DictWriter(file, fieldnames=header)
                     for marker in frames.get('markers', None):
                         if marker is not None:

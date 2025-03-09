@@ -9,6 +9,7 @@ class MotiveStreamParser(object):
     def __init__(self, stream: bytes):
         self.__stream = memoryview(stream)
         self.__offset = 0
+        # print("Parser init'd")
 
     def seek(self, by: int) -> None:
         self.__offset += by
@@ -29,6 +30,7 @@ class MotiveStreamParser(object):
     def frame_number(self) -> tuple[int, int]:
         num = structs["frame_number"].parse(self.__stream[self.__offset :])
         my_size = self.size("frame_number")
+        self.seek(my_size)
         
         return (num, my_size)
 

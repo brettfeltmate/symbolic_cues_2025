@@ -122,8 +122,9 @@ class NatNetClient:
         }
 
     def __unpack_data(self, stream: bytes) -> int:
+        # print("__unpack_data")
         parse = Parser(stream=stream)
-        frame_number = parse.frame_number()
+        frame_number, _ = parse.frame_number()
 
         n_marker_sets, _ = parse.count()
         _, _ = parse.bytelen()
@@ -144,6 +145,7 @@ class NatNetClient:
                     marker_set['markers'].append(marker)
 
                 # self.listeners['marker'](marker_set)
+                # print("__unpack | callback")
                 self.marker_listener(marker_set)
 
             else:

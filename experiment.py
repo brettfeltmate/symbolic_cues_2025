@@ -22,7 +22,7 @@ from klibs.KLUserInterface import (
     show_cursor,
     hide_cursor,
 )
-from klibs.KLUtilities import pump, smart_sleep
+from klibs.KLUtilities import pump,smart_sleep
 from Optitracker.optitracker.OptiTracker import Optitracker  # type: ignore[import]
 from rich.console import Console
 
@@ -70,9 +70,9 @@ class symbolic_cues_2025(klibs.Experiment):
         else:
             P.movement_time_limit = 1000  # type: ignore[attr-defined]
 
-        if P.development_mode:
-            if os.path.exists('OptiData/velocity_log.txt'):
-                os.remove('OptiData/velocity_log.txt')
+        # if P.development_mode:
+        if os.path.exists('OptiData/velocity_log.txt'):
+            os.remove('OptiData/velocity_log.txt')
 
         # get base unit for sizings & positionings
         self.px_cm = P.ppi / 2.54
@@ -253,8 +253,12 @@ class symbolic_cues_2025(klibs.Experiment):
                 q = pump(True)
                 _ = ui_request(queue=q)
 
+                velocity = self.opti.velocity()
+
+                print(int(velocity))
+
                 # admonish any sizable pre-cue movement
-                if self.opti.velocity() > P.velocity_threshold:  # type: ignore[attr-defined]
+                if velocity > P.velocity_threshold:  # type: ignore[attr-defined]
                     self.opti.stop_listening()
                     self.evm.stop_clock()
 
@@ -279,15 +283,17 @@ class symbolic_cues_2025(klibs.Experiment):
 
                 velocity = self.opti.velocity()
 
-                if P.development_mode:
-                    with open('OptiData/velocity_log.txt', 'a') as f:
-                        f.write(str(velocity) + '\n')
+                # self.draw_display(cue=True, msg = f"{int(velocity)}")
+
+                # if P.development_mode:
+                # with open('OptiData/velocity_log.txt', 'a') as f:
+                #     f.write(str(velocity) + '\n')
 
                 if velocity >= P.velocity_threshold:  # type: ignore[attr-defined]
                     n_times_at_thresh += 1
 
                 # HACK: stagger queries to prevent overlapping frames (this could be problematic...)
-                smart_sleep(P.query_stagger)  # type: ignore[attr-defined]
+                # smart_sleep(P.query_stagger)  # type: ignore[attr-defined]
 
             # rt = delay between cue onset and meeting movement criteria
             self.trial_rt = self.evm.trial_time_ms - cue_on_at
@@ -309,6 +315,8 @@ class symbolic_cues_2025(klibs.Experiment):
 
                 velocity = self.opti.velocity()
 
+                # self.draw_display(target=True, msg = f"{int(velocity)}")
+
                 # Admoinish any hesitations
                 if (
                     velocity < P.velocity_threshold  # type: ignore[attr-defined]
@@ -324,7 +332,7 @@ class symbolic_cues_2025(klibs.Experiment):
 
                         raise TrialException('Early reach termination')
 
-                    smart_sleep(P.query_stagger)  # type: ignore[attr-defined]
+                #smart_sleep(P.query_stagger)  # type: ignore[attr-defined]
 
                 # NOTE: targets are selected via touchscreen
                 which_bound = self.bounds.which_boundary(mouse_pos())
@@ -404,8 +412,8 @@ class symbolic_cues_2025(klibs.Experiment):
             if msg:
                 message(
                     msg,
-                    location=P.screen_c,
-                    registration=5,
+                    location=[0, 0],
+                    registration=7,
                     blit_txt=True,
                 )
 
