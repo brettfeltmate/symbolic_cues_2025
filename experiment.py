@@ -5,7 +5,7 @@ __author__ = 'Brett Feltmate'
 
 import os
 from copy import deepcopy
-from random import shuffle
+from random import shuffle, sample
 
 import klibs
 from klibs import P
@@ -22,9 +22,8 @@ from klibs.KLUserInterface import (
     show_cursor,
     hide_cursor,
 )
-from klibs.KLUtilities import pump,smart_sleep
+from klibs.KLUtilities import pump, smart_sleep
 from Optitracker.optitracker.OptiTracker import Optitracker  # type: ignore[import]
-from rich.console import Console
 
 BLACK = (0, 0, 0, 255)
 HIGH = 'HIGH'
@@ -50,7 +49,7 @@ class symbolic_cues_2025(klibs.Experiment):
             display_ppi=P.ppi,  # type: ignore[attr-defined]
         )
 
-        self.data_dir = "OptiData"
+        self.data_dir = 'OptiData'
 
         if P.condition != 'mouse':
             # set up initial data directories for mocap recordings
@@ -160,20 +159,27 @@ class symbolic_cues_2025(klibs.Experiment):
 
         shuffle(self.trial_list)
 
+        if P.run_practice_blocks:
+            self.practice_trials = sample(self.trial_list, P.practice_trial_count)  # type: ignore[attr-defined]
+
     def block(self):
         if P.practicing:
-            self.block_dir = f'OptiData/practice/{P.p_id}/Block_{P.block_number}'
+            self.block_dir = (
+                f'OptiData/practice/{P.p_id}/Block_{P.block_number}'
+            )
             if not os.path.exists(self.block_dir):
                 os.mkdir(self.block_dir)
 
         else:
-            self.block_dir = f'OptiData/testing/{P.p_id}/Block_{P.block_number}'
+            self.block_dir = (
+                f'OptiData/testing/{P.p_id}/Block_{P.block_number}'
+            )
             if not os.path.exists(self.block_dir):
                 os.mkdir(self.block_dir)
 
         fill()
         message(
-            'instructions go here\n\nany key to start block',
+            'Tap screen to start block',
             location=P.screen_c,
             registration=5,
             blit_txt=True,
@@ -197,7 +203,11 @@ class symbolic_cues_2025(klibs.Experiment):
             self.cue_reliability,
             self.cue_laterality,
             self.cue_validity,
-        ) = self.trial_list.pop()
+        ) = (
+            self.trial_list.pop()
+            if not P.practicing
+            else self.practice_trials.pop()
+        )  # type: ignore[attr-defined]
 
         # set target pos as function of cue validity
         if self.cue_laterality == LEFT:
@@ -212,14 +222,6 @@ class symbolic_cues_2025(klibs.Experiment):
 
         # draw base display (starting position only)
         self.draw_display()
-
-        # if P.development_mode:
-        #     self.console.log(
-        #         self.cue_reliability,
-        #         self.cue_laterality,
-        #         self.cue_validity,
-        #         self.target_side,
-        #     )
 
         # trial started by touching start position
         while not self.bounds.which_boundary(mouse_pos()) == START:
@@ -241,10 +243,7 @@ class symbolic_cues_2025(klibs.Experiment):
     # TODO: re-add popped trials on exception
     def trial(self):  # type: ignore[override]
 
-        if P.condition == 'mouse':
-            show_cursor()
-        else:
-            hide_cursor()
+        show_cursor() if P.condition == 'mouse' else hide_cursor()
 
         while self.evm.before('trial_timeout'):
 
@@ -258,18 +257,9 @@ class symbolic_cues_2025(klibs.Experiment):
 
                 velocity = self.opti.velocity()
 
-                # print(int(velocity))
-
                 # admonish any sizable pre-cue movement
                 if velocity > P.velocity_threshold:  # type: ignore[attr-defined]
-                    self.opti.stop_listening()
-                    self.evm.stop_clock()
-
-                    self.draw_display(
-                        msg='Please keep still until the cue appears'
-                    )
-
-                    raise TrialException('Pre-emptive movement')
+                    self.abort_trial('Pre-emptive movement')
 
             self.draw_display(cue=True)
             cue_on_at = self.evm.trial_time_ms
@@ -283,20 +273,9 @@ class symbolic_cues_2025(klibs.Experiment):
 
             # Trigger target onset if-and-only-if velocity criteria are met
             while n_times_at_thresh < P.velocity_threshold_run:  # type: ignore[attr-defined]
-
                 velocity = self.opti.velocity()
-
-                # self.draw_display(cue=True, msg = f"{int(velocity)}")
-
-                # if P.development_mode:
-                # with open('OptiData/velocity_log.txt', 'a') as f:
-                #     f.write(str(velocity) + '\n')
-
                 if velocity >= P.velocity_threshold:  # type: ignore[attr-defined]
                     n_times_at_thresh += 1
-
-                # HACK: stagger queries to prevent overlapping frames (this could be problematic...)
-                # smart_sleep(P.query_stagger)  # type: ignore[attr-defined]
 
             # rt = delay between cue onset and meeting movement criteria
             self.trial_rt = self.evm.trial_time_ms - cue_on_at
@@ -315,29 +294,15 @@ class symbolic_cues_2025(klibs.Experiment):
             # Monitor reach kinematics until movement complete or timeout
             times_below_thresh = 0
             while self.evm.trial_time_ms < self.trial_mt_max:  # type: ignore[operator]
-
                 velocity = self.opti.velocity()
 
-                # self.draw_display(target=True, msg = f"{int(velocity)}")
-
                 # Admoinish any hesitations
-                if (
-                    velocity < P.velocity_threshold  # type: ignore[attr-defined]
-                ):
+                if velocity < P.velocity_threshold:   # type: ignore
                     times_below_thresh += 1
+
                     if times_below_thresh == P.velocity_threshold_run:  # type: ignore[attr-defined]
-                        self.opti.stop_listening()
-                        self.evm.stop_clock()
+                        self.abort_trial('Early reach termination')
 
-                        self.draw_display(
-                            msg="Please don't pause or pull back until reach is completed"
-                        )
-
-                        raise TrialException('Early reach termination')
-
-                #smart_sleep(P.query_stagger)  # type: ignore[attr-defined]
-
-                # NOTE: targets are selected via touchscreen
                 which_bound = self.bounds.which_boundary(mouse_pos())
 
                 # If target touched, log selection & mt, break out of trial loop
@@ -350,12 +315,8 @@ class symbolic_cues_2025(klibs.Experiment):
         self.opti.stop_listening()
 
         if self.trial_selected is None:
-            self.draw_display(
-                msg='Movement timed out! Please try to be quicker.'
-            )
-            raise TrialException('Movement timed out')
+            self.abort_trial('Movement timed out')
 
-        # TODO: organize returned values
         return {
             'practicing': P.practicing,
             'block_num': P.block_number,
@@ -371,13 +332,59 @@ class symbolic_cues_2025(klibs.Experiment):
         }
 
     def trial_clean_up(self):
-        # TODO: on TrialException, move opti file and log reason
         if self.opti.is_listening():
             self.opti.stop_listening()
+
+        if os.path.exists(self.opti.data_dir):
+            with open(self.opti.data_dir, 'r') as f:
+                data = f.read()
+
+            markup = (
+                f"# Block {P.block_number}",
+                f"# Trial {P.trial_number}",
+                f"# Cue reliability: {self.cue_reliability}",
+                f"# Cue laterality: {self.cue_laterality}",
+                f"# Cue validity: {self.cue_validity}",
+                f"# Target side: {self.target_side}",
+            )
+
+            with open(self.opti.data_dir, 'w') as f:
+                f.write('\n'.join(markup) + '\n' + data)
 
     def clean_up(self):
         if self.opti.is_listening():
             self.opti.stop_listening()
+
+    def abort_trial(self, err=''):
+        msgs = {
+            'Pre-emptive movement': 'Please keep still until the cue appears',
+            'Early reach termination': "Please don't pause or pull back until reach is completed",
+            'Movement timed out': 'Movement timed out! Please try to be quicker.',
+        }
+        self.evm.stop_clock()
+        if self.opti.is_listening():
+            self.opti.stop_listening()
+
+        os.remove(self.opti.data_dir)
+
+        if P.practicing:
+            self.practice_trials.append(
+                (self.cue_reliability, self.cue_laterality, self.cue_validity)
+            )
+            shuffle(self.practice_trials)
+        else:
+            self.trial_list.append(
+                (self.cue_reliability, self.cue_laterality, self.cue_validity)
+            )
+            shuffle(self.trial_list)
+
+        fill()
+        message(msgs[err], location=P.screen_c, registration=5, blit_txt=True)
+        flip()
+
+        smart_sleep(1000)
+
+        raise TrialException(err)
 
     def draw_display(
         self,

@@ -47,6 +47,7 @@ trials_per_cue = 40
 trials_per_block = trials_per_cue * 4
 conditions = ["opti", "mouse"]
 default_condition = "opti"
+trials_per_practice_block = 8
 
 #########################################
 # Development Mode Settings

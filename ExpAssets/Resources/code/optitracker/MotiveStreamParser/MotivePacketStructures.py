@@ -1,5 +1,5 @@
 # type: ignore
-from construct import this, Float32l, Int16sl, Struct, Computed, Int32ul, CString, Default, Probe
+from construct import this, Float32l, Int16sl, Struct, Computed, Int32ul, CString
 
 def decodeMarkerID(obj, _):
     return obj.encoded_id & 0x0000FFFF
@@ -14,14 +14,12 @@ def trackingValid(obj, _):
 
 
 unlabeled_marker = Struct(
-    # "frame_number" / Default(Int32ul, 0),
     "pos_x" / Float32l,
     "pos_y" / Float32l,
     "pos_z" / Float32l,
 )
 
 labeled_marker = Struct(
-    # "frame_number" / Default(Int32ul, 0),
     "id" / Int32ul,
     "marker_id" / Computed(this.id * decodeMarkerID),
     "model_id" / Computed(this.id * decodeModelID),
@@ -34,7 +32,6 @@ labeled_marker = Struct(
 )
 
 rigid_body = Struct(
-    # "frame_number" / Default(Int32ul, 0),
     "id" / Int32ul,
     "pos_x" / Float32l,
     "pos_y" / Float32l,
