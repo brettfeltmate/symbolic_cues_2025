@@ -37,8 +37,8 @@ CENTER = 'CENTER'
 
 class symbolic_cues_2025(klibs.Experiment):
     def setup(self):
-        if P.development_mode:
-            self.console = Console()
+        # if P.development_mode:
+        #     self.console = Console()
 
         # init optitracker
         self.opti = Optitracker(
@@ -139,6 +139,8 @@ class symbolic_cues_2025(klibs.Experiment):
         cue_image_names = ['bowtie', 'laos', 'legoman', 'barbell']
         shuffle(cue_image_names)
 
+        # TODO: practice trial list (sampole)
+
         # generate cue stimuli
         self.cues = {}
         for reliability in [HIGH, LOW]:
@@ -211,13 +213,13 @@ class symbolic_cues_2025(klibs.Experiment):
         # draw base display (starting position only)
         self.draw_display()
 
-        if P.development_mode:
-            self.console.log(
-                self.cue_reliability,
-                self.cue_laterality,
-                self.cue_validity,
-                self.target_side,
-            )
+        # if P.development_mode:
+        #     self.console.log(
+        #         self.cue_reliability,
+        #         self.cue_laterality,
+        #         self.cue_validity,
+        #         self.target_side,
+        #     )
 
         # trial started by touching start position
         while not self.bounds.which_boundary(mouse_pos()) == START:
@@ -233,9 +235,10 @@ class symbolic_cues_2025(klibs.Experiment):
         smart_sleep(P.query_stagger)  # type: ignore[attr-defined]
 
         # Ensure opti is listening
-        if not self.opti.is_listening() and not P.development_mode:
+        if not self.opti.is_listening():
             raise RuntimeError('Failed to connect to OptiTrack system')
 
+    # TODO: re-add popped trials on exception
     def trial(self):  # type: ignore[override]
 
         if P.condition == 'mouse':
@@ -255,7 +258,7 @@ class symbolic_cues_2025(klibs.Experiment):
 
                 velocity = self.opti.velocity()
 
-                print(int(velocity))
+                # print(int(velocity))
 
                 # admonish any sizable pre-cue movement
                 if velocity > P.velocity_threshold:  # type: ignore[attr-defined]
