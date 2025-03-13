@@ -160,7 +160,7 @@ class symbolic_cues_2025(klibs.Experiment):
         shuffle(self.trial_list)
 
         if P.run_practice_blocks:
-            self.practice_trials = sample(self.trial_list, P.practice_trial_count)  # type: ignore[attr-defined]
+            self.practice_trials = sample(self.trial_list, P.trials_per_practice_block)  # type: ignore[attr-defined]
 
     def block(self):
         if P.practicing:

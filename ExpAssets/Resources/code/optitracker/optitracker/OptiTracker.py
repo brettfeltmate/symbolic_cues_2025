@@ -290,7 +290,7 @@ class Optitracker(object):
 
         velocities = self.__calc_vector_velocity(frames, axis)
 
-        return -np.mean(velocities['velocity'], dtype=np.float64)  # type: ignore
+        return np.mean(velocities['velocity'], dtype=np.float64)  # type: ignore
 
     def position(
         self,
