@@ -76,6 +76,7 @@ marker_count = 10
 window_size = 5  # num frames considered when calculating velocity
 rescale_by = 1000  # rescale values from m to mm
 primary_axis = 'z'  # axis to consider for movement (for/back)
+# TODO: mull these over
 velocity_threshold = 55  # req vel (mm / s) to be considered in-flight
 velocity_threshold_run = 5  # conseq times thresh met to trigger target
 movement_time_limit = 450 # movetime bound (ms) before trial abort

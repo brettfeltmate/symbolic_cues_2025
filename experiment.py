@@ -297,6 +297,7 @@ class symbolic_cues_2025(klibs.Experiment):
                 velocity = self.opti.velocity()
 
                 # Admoinish any hesitations
+                # TODO: restrict to primary movement axis
                 if velocity < P.velocity_threshold:   # type: ignore
                     times_below_thresh += 1
 
@@ -355,6 +356,7 @@ class symbolic_cues_2025(klibs.Experiment):
         if self.opti.is_listening():
             self.opti.stop_listening()
 
+    # TODO: log recycling events
     def abort_trial(self, err=''):
         msgs = {
             'Pre-emptive movement': 'Please keep still until the cue appears',
