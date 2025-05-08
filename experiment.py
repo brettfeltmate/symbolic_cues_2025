@@ -34,6 +34,9 @@ LEFT = 'LEFT'
 RIGHT = 'RIGHT'
 START = 'START'
 CENTER = 'CENTER'
+TIMEOUT = 'timed_out'
+EARLY = 'early_movement'
+SLOW = 'stopped_early'
 
 
 class symbolic_cues_2025(klibs.Experiment):
@@ -62,6 +65,8 @@ class symbolic_cues_2025(klibs.Experiment):
                 os.mkdir('OptiData/testing')
 
             os.mkdir(f'OptiData/testing/{P.p_id}')
+
+            os.mkdir(f'OptiData/aborted/{P.p_id}')
 
             if P.run_practice_blocks:
                 if not os.path.exists('OptiData/practice'):
@@ -272,7 +277,7 @@ class symbolic_cues_2025(klibs.Experiment):
             while self.evm.before('cue_onset'):
                 _ = ui_request()
                 if get_key_state('space') == 0:
-                    self.abort_trial('Pre-emptive movement')
+                    self.abort_trial(EARLY)
 
             self.draw_display(cue=True)
 
@@ -318,7 +323,7 @@ class symbolic_cues_2025(klibs.Experiment):
                     times_below_thresh += 1
 
                     if times_below_thresh == P.velocity_threshold_run:  # type: ignore[attr-defined]
-                        self.abort_trial('Early reach termination')
+                        self.abort_trial(SLOW)
 
                 which_bound = self.bounds.which_boundary(mouse_pos())
 
@@ -330,7 +335,7 @@ class symbolic_cues_2025(klibs.Experiment):
         self.opti.stop_listening()
 
         if self.trial_selected is None:
-            self.abort_trial('Movement timed out')
+            self.abort_trial(TIMEOUT)
 
         return {
             'practicing': P.practicing,
@@ -373,15 +378,37 @@ class symbolic_cues_2025(klibs.Experiment):
     # TODO: log recycling events
     def abort_trial(self, err=''):
         msgs = {
-            'Pre-emptive movement': 'Please keep still until the cue appears',
-            'Early reach termination': "Please don't pause or pull back until reach is completed",
-            'Movement timed out': 'Movement timed out! Please try to be quicker.',
+            EARLY: "Please don't release space until the cue appears",
+            SLOW: "Please don't pause or pull back until reach is completed",
+            TIMEOUT: 'Timed out! Please try to be quicker.',
         }
         self.evm.stop_clock()
         if self.opti.is_listening():
             self.opti.stop_listening()
 
+        # move data file to aborted folder then cleanup original
+        move_to = f'OptiData/aborted/{P.p_id}/Trial_{P.trial_number}_Block_{P.block_number}'
+        move_to += '/_practice.csv' if P.practicing else '.csv'
+        os.rename(self.opti.data_dir, move_to)
         os.remove(self.opti.data_dir)
+
+        # log reason for aborting
+        abort_info = {
+            'practicing': P.practicing,
+            'block_num': P.block_number,
+            'trial_num': P.trial_number,
+            'cue_reliability': self.cue_validity,
+            'cue_laterality': self.cue_laterality,
+            'cue_validity': self.cue_validity,
+            'reaction_time': self.trial_rt if not None else 'NA',
+            'movement_time': self.trial_mt if not None else 'NA',
+            'touched_target': self.trial_selected == self.target_side
+            if self.trial_selected is not None
+            else 'NA',
+            'abort_reason': err,
+        }
+
+        self.db.insert(data=abort_info, table='aborts')  # type: ignore
 
         if P.practicing:
             self.practice_trials.append(

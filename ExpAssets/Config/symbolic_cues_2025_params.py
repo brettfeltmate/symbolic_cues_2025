@@ -80,7 +80,7 @@ velocity_threshold = 55  # req vel (mm / s) to be considered in-flight
 velocity_threshold_run = 5  # conseq times thresh met to trigger target
 movement_time_limit = 450   # movetime bound (ms) before trial abort
 query_stagger = window_size * (1000 / 120)  # time to wait between opti queries
-
+movement_time_limit = 450   # movetime bound (ms) before trial abort
 # Cue/exp params #
 cue_types = {  # Proportion, by cue type, of in/validly cued trials
     'HIGH': {'LEFT': [0.80, 0.20], 'RIGHT': [0.20, 0.80]},
