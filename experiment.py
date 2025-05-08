@@ -17,7 +17,7 @@ from klibs.KLGraphics import KLDraw as kld
 from klibs.KLGraphics import KLNumpySurface as kln
 from klibs.KLGraphics import blit, fill, flip
 from klibs.KLUserInterface import (
-    any_key,
+    key_pressed,
     mouse_pos,
     ui_request,
     show_cursor,
@@ -25,6 +25,7 @@ from klibs.KLUserInterface import (
 )
 from klibs.KLUtilities import pump, smart_sleep
 from Optitracker.optitracker.OptiTracker import Optitracker  # type: ignore[import]
+from get_key_state import get_key_state  # type: ignore[import]
 
 BLACK = (0, 0, 0, 255)
 HIGH = 'HIGH'
@@ -96,10 +97,10 @@ class symbolic_cues_2025(klibs.Experiment):
 
         # define necessary locations
         self.locs = {
-            START: (
-                P.screen_x // 2,  # type: ignore[operator]
-                P.screen_y - 3 * self.px_cm,  # type: ignore[operator]
-            ),
+            # START: (
+            #     P.screen_x // 2,  # type: ignore[operator]
+            #     P.screen_y - 3 * self.px_cm,  # type: ignore[operator]
+            # ),
             LEFT: (
                 P.screen_x // 2 - (P.h_offset * self.px_cm),  # type: ignore[operator]
                 P.screen_y - (P.v_offset * self.px_cm),  # type: ignore[operator]
@@ -127,11 +128,11 @@ class symbolic_cues_2025(klibs.Experiment):
                     center=self.locs[RIGHT],
                     radius=P.circ_size * self.px_cm / 2,  # type: ignore[attr-defined]
                 ),
-                CircleBoundary(
-                    label=START,
-                    center=self.locs[START],
-                    radius=P.circ_size * self.px_cm / 2,  # type: ignore[attr-defined]
-                ),
+                # CircleBoundary(
+                #     label=START,
+                #     center=self.locs[START],
+                #     radius=P.circ_size * self.px_cm / 2,  # type: ignore[attr-defined]
+                # ),
             ]
         )
 
@@ -177,21 +178,31 @@ class symbolic_cues_2025(klibs.Experiment):
                 os.mkdir(self.block_dir)
 
         fill()
+
+        block_msg = (
+            'Tap space to start the block.'
+            '\n'
+            'To start each trial, press and HOLD space until the cue appears.'
+        )
+
+        if P.practicing:
+            block_msg += '\n\n(This is a practice block.)'
+
         message(
-            'Tap screen to start block',
+            block_msg,
             location=P.screen_c,
             registration=5,
             blit_txt=True,
         )
         flip()
 
-        any_key()
+        _ = pump(True)
+        while not key_pressed('space'):
+            q = pump(True)
+            _ = ui_request(queue=q)
 
     def trial_prep(self):
         self.opti.data_dir = self.block_dir + f'/Trial_{P.trial_number}.csv'
-
-        # superstitiously ensure mouse does not start within any boundaries
-        mouse_pos(position=P.screen_c)
 
         self.trial_rt = None
         self.trial_mt = None
@@ -219,11 +230,20 @@ class symbolic_cues_2025(klibs.Experiment):
 
         self.evm.add_event('trial_timeout', P.trial_time_max, after='cue_onset')  # type: ignore[attr-defined]
 
-        # draw base display (starting position only)
-        self.draw_display()
+        # Remind user how to start trials
+        _ = pump(True)
+        fill()
+        message(
+            'Press and HOLD space until the cue appears.',
+            location=P.screen_c,
+            registration=5,
+            blit_txt=True,
+        )
+        flip()
 
         # trial started by touching start position
-        while not self.bounds.which_boundary(mouse_pos()) == START:
+        # TODO: use keystate instead of mouse_pos/hand_pos
+        while not key_pressed('space'):
             q = pump(True)
             _ = ui_request(queue=q)
 
@@ -243,23 +263,19 @@ class symbolic_cues_2025(klibs.Experiment):
 
         show_cursor() if P.condition == 'mouse' else hide_cursor()
 
-        while self.evm.before('trial_timeout'):
+        while self.evm.before('trial_timeout') and self.trial_mt is None:
 
             #############
             # cue phase #
             #############
 
             while self.evm.before('cue_onset'):
-                q = pump(True)
-                _ = ui_request(queue=q)
-
-                velocity = self.opti.velocity()
-
-                # admonish any sizable pre-cue movement
-                if velocity > P.velocity_threshold:  # type: ignore[attr-defined]
+                _ = ui_request()
+                if get_key_state('space') == 0:
                     self.abort_trial('Pre-emptive movement')
 
             self.draw_display(cue=True)
+
             cue_on_at = self.evm.trial_time_ms
             ########################
 
@@ -291,7 +307,9 @@ class symbolic_cues_2025(klibs.Experiment):
 
             # Monitor reach kinematics until movement complete or timeout
             times_below_thresh = 0
-            while self.evm.trial_time_ms < self.trial_mt_max:  # type: ignore[operator]
+            while (
+                self.evm.trial_time_ms < self.trial_mt_max
+            ) and self.trial_mt is None:
                 velocity = self.opti.velocity()
 
                 # Admoinish any hesitations
@@ -308,8 +326,6 @@ class symbolic_cues_2025(klibs.Experiment):
                 if which_bound in [LEFT, RIGHT]:
                     self.trial_selected = which_bound
                     self.trial_mt = self.evm.trial_time_ms - self.trial_rt - cue_on_at  # type: ignore[operator]
-                    break
-            break
 
         self.opti.stop_listening()
 
@@ -394,8 +410,6 @@ class symbolic_cues_2025(klibs.Experiment):
         msg: str = '',
     ) -> None:
         fill()
-
-        blit(self.placeholder, location=self.locs[START], registration=5)
 
         if any([fix, cue, target]):
             blit(self.placeholder, location=self.locs[LEFT], registration=5)
