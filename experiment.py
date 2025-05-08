@@ -7,6 +7,7 @@ import os
 from copy import deepcopy
 from random import shuffle, sample
 
+
 import klibs
 from klibs import P
 from klibs.KLBoundary import BoundarySet, CircleBoundary
@@ -138,8 +139,6 @@ class symbolic_cues_2025(klibs.Experiment):
         cue_image_names = ['bowtie', 'laos', 'legoman', 'barbell']
         shuffle(cue_image_names)
 
-        # TODO: practice trial list (sampole)
-
         # generate cue stimuli
         self.cues = {}
         for reliability in [HIGH, LOW]:
@@ -240,7 +239,6 @@ class symbolic_cues_2025(klibs.Experiment):
         if not self.opti.is_listening():
             raise RuntimeError('Failed to connect to OptiTrack system')
 
-    # TODO: re-add popped trials on exception
     def trial(self):  # type: ignore[override]
 
         show_cursor() if P.condition == 'mouse' else hide_cursor()
@@ -297,7 +295,7 @@ class symbolic_cues_2025(klibs.Experiment):
                 velocity = self.opti.velocity()
 
                 # Admoinish any hesitations
-                # TODO: restrict to primary movement axis
+                # TODO: Consider using some distance thresholding instead
                 if velocity < P.velocity_threshold:   # type: ignore
                     times_below_thresh += 1
 
@@ -341,12 +339,12 @@ class symbolic_cues_2025(klibs.Experiment):
                 data = f.read()
 
             markup = (
-                f"# Block {P.block_number}",
-                f"# Trial {P.trial_number}",
-                f"# Cue reliability: {self.cue_reliability}",
-                f"# Cue laterality: {self.cue_laterality}",
-                f"# Cue validity: {self.cue_validity}",
-                f"# Target side: {self.target_side}",
+                f'# Block {P.block_number}',
+                f'# Trial {P.trial_number}',
+                f'# Cue reliability: {self.cue_reliability}',
+                f'# Cue laterality: {self.cue_laterality}',
+                f'# Cue validity: {self.cue_validity}',
+                f'# Target side: {self.target_side}',
             )
 
             with open(self.opti.data_dir, 'w') as f:

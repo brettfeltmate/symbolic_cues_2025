@@ -8,9 +8,8 @@ manual_demographics_collection = False
 manual_trial_generation = False
 run_practice_blocks = True
 multi_user = False
-view_distance = (
-    57  # in centimeters, 57cm = 1 deg of visual angle per cm of screen
-)
+# in centimeters, 57cm = 1 deg of visual angle per cm of screen
+view_distance = 57
 allow_hidpi = True
 
 #########################################
@@ -45,8 +44,8 @@ multi_session_project = False
 blocks_per_experiment = 1
 trials_per_cue = 40
 trials_per_block = trials_per_cue * 4
-conditions = ["opti", "mouse"]
-default_condition = "opti"
+conditions = ['opti', 'mouse']
+default_condition = 'opti'
 trials_per_practice_block = 8
 
 #########################################
@@ -79,7 +78,7 @@ primary_axis = 'z'  # axis to consider for movement (for/back)
 # TODO: mull these over
 velocity_threshold = 55  # req vel (mm / s) to be considered in-flight
 velocity_threshold_run = 5  # conseq times thresh met to trigger target
-movement_time_limit = 450 # movetime bound (ms) before trial abort
+movement_time_limit = 450   # movetime bound (ms) before trial abort
 query_stagger = window_size * (1000 / 120)  # time to wait between opti queries
 
 # Cue/exp params #
