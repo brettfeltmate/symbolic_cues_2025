@@ -133,11 +133,6 @@ class symbolic_cues_2025(klibs.Experiment):
                     center=self.locs[RIGHT],
                     radius=P.circ_size * self.px_cm / 2,  # type: ignore[attr-defined]
                 ),
-                # CircleBoundary(
-                #     label=START,
-                #     center=self.locs[START],
-                #     radius=P.circ_size * self.px_cm / 2,  # type: ignore[attr-defined]
-                # ),
             ]
         )
 
@@ -247,7 +242,6 @@ class symbolic_cues_2025(klibs.Experiment):
         flip()
 
         # trial started by touching start position
-        # TODO: use keystate instead of mouse_pos/hand_pos
         while not key_pressed('space'):
             q = pump(True)
             _ = ui_request(queue=q)
@@ -257,8 +251,8 @@ class symbolic_cues_2025(klibs.Experiment):
         # plug into NatNet stream
         self.opti.start_listening()
 
-        # give opti 5 frames of lead time
-        smart_sleep(P.query_stagger)  # type: ignore[attr-defined]
+        # give opti a few frames of lead time
+        smart_sleep((self.opti.sample_rate * 3) // 1000)
 
         # Ensure opti is listening
         if not self.opti.is_listening():
@@ -280,27 +274,22 @@ class symbolic_cues_2025(klibs.Experiment):
                     self.abort_trial(EARLY)
 
             self.draw_display(cue=True)
-
             cue_on_at = self.evm.trial_time_ms
+
+            while get_key_state('space') == 1:
+                _ = ui_request()
+
+            self.trial_rt = self.evm.trial_time_ms - cue_on_at
+            self.trial_mt_max = self.evm.trial_time_ms + P.movement_time_limit  # type: ignore[attr-defined]
             ########################
 
             ################
             # target phase #
             ################
 
-            n_times_at_thresh = 0
-
-            # Trigger target onset if-and-only-if velocity criteria are met
-            while n_times_at_thresh < P.velocity_threshold_run:  # type: ignore[attr-defined]
-                velocity = self.opti.velocity()
-                if velocity >= P.velocity_threshold:  # type: ignore[attr-defined]
-                    n_times_at_thresh += 1
-
-            # rt = delay between cue onset and meeting movement criteria
-            self.trial_rt = self.evm.trial_time_ms - cue_on_at
-
-            # max mt = rt + movement_time_limit
-            self.trial_mt_max = self.evm.trial_time_ms + P.movement_time_limit  # type: ignore[attr-defined]
+            # Hang tight until velocity threshold is met
+            while self.opti.velocity() < P.velocity_threshold:  # type: ignore[attr-defined]
+                _ = ui_request()
 
             # draw target
             self.draw_display(target=True)
@@ -318,7 +307,6 @@ class symbolic_cues_2025(klibs.Experiment):
                 velocity = self.opti.velocity()
 
                 # Admoinish any hesitations
-                # TODO: Consider using some distance thresholding instead
                 if velocity < P.velocity_threshold:   # type: ignore
                     times_below_thresh += 1
 
@@ -360,6 +348,7 @@ class symbolic_cues_2025(klibs.Experiment):
                 data = f.read()
 
             markup = (
+                f'# Participant ID: {P.p_id}',
                 f'# Block {P.block_number}',
                 f'# Trial {P.trial_number}',
                 f'# Cue reliability: {self.cue_reliability}',
@@ -375,7 +364,6 @@ class symbolic_cues_2025(klibs.Experiment):
         if self.opti.is_listening():
             self.opti.stop_listening()
 
-    # TODO: log recycling events
     def abort_trial(self, err=''):
         msgs = {
             EARLY: "Please don't release space until the cue appears",

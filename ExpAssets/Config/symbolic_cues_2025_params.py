@@ -72,14 +72,14 @@ append_hostname = False
 
 # Opti/movement params #
 marker_count = 10
-window_size = 5  # num frames considered when calculating velocity
+window_size = 3  # num frames considered when calculating velocity
 rescale_by = 1000  # rescale values from m to mm
 primary_axis = 'z'  # axis to consider for movement (for/back)
 # TODO: mull these over
-velocity_threshold = 55  # req vel (mm / s) to be considered in-flight
-velocity_threshold_run = 5  # conseq times thresh met to trigger target
+velocity_threshold = 10  # req vel (mm / s) to be considered in-flight
+# velocity_threshold_run = 5  # conseq times thresh met to trigger target
 movement_time_limit = 450   # movetime bound (ms) before trial abort
-query_stagger = window_size * (1000 / 120)  # time to wait between opti queries
+# query_stagger = window_size * (1000 / 120)  # time to wait between opti queries
 movement_time_limit = 450   # movetime bound (ms) before trial abort
 # Cue/exp params #
 cue_types = {  # Proportion, by cue type, of in/validly cued trials
