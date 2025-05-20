@@ -587,6 +587,8 @@ class Optitracker(object):
         # Filter for relevant frames
         frames = frames[frames['frame_number'] > lookback]
 
+        print(f"\n\nReading till frame {lookback} from file {self.__data_dir}\n\n")
+
         return frames
 
     def __write(self, frames) -> None:
@@ -616,7 +618,7 @@ class Optitracker(object):
 
         else:
             # if type(frames) is dict:
-            if frames.get('label') == 'hand':
+            if frames.get('label') == 'Hand':
                 # print("__write | hand")
                 # Append data to trial-specific CSV file
                 fname = self.__data_dir

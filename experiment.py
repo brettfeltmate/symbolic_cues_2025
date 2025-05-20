@@ -17,6 +17,7 @@ from klibs.KLGraphics import KLDraw as kld
 from klibs.KLGraphics import KLNumpySurface as kln
 from klibs.KLGraphics import blit, fill, flip
 from klibs.KLUserInterface import (
+    any_key,
     key_pressed,
     mouse_pos,
     ui_request,
@@ -180,7 +181,7 @@ class symbolic_cues_2025(klibs.Experiment):
         fill()
 
         block_msg = (
-            'Tap space to start the block.'
+            'Tap enter to start the block.'
             '\n'
             'To start each trial, press and HOLD space until the cue appears.'
         )
@@ -196,10 +197,8 @@ class symbolic_cues_2025(klibs.Experiment):
         )
         flip()
 
-        _ = pump(True)
-        while not key_pressed('space'):
-            q = pump(True)
-            _ = ui_request(queue=q)
+        any_key()
+
 
     def trial_prep(self):
         self.opti.data_dir = self.block_dir + f'/Trial_{P.trial_number}.csv'
@@ -231,7 +230,6 @@ class symbolic_cues_2025(klibs.Experiment):
         self.evm.add_event('trial_timeout', P.trial_time_max, after='cue_onset')  # type: ignore[attr-defined]
 
         # Remind user how to start trials
-        _ = pump(True)
         fill()
         message(
             'Press and HOLD space until the cue appears.',
@@ -243,7 +241,7 @@ class symbolic_cues_2025(klibs.Experiment):
 
         # trial started by touching start position
         # TODO: use keystate instead of mouse_pos/hand_pos
-        while not key_pressed('space'):
+        while get_key_state("space") == 0:
             q = pump(True)
             _ = ui_request(queue=q)
 
@@ -253,7 +251,7 @@ class symbolic_cues_2025(klibs.Experiment):
         self.opti.start_listening()
 
         # give opti 5 frames of lead time
-        smart_sleep(P.query_stagger)  # type: ignore[attr-defined]
+        smart_sleep(P.query_stagger * 2)  # type: ignore[attr-defined]
 
         # Ensure opti is listening
         if not self.opti.is_listening():
@@ -270,7 +268,6 @@ class symbolic_cues_2025(klibs.Experiment):
             #############
 
             while self.evm.before('cue_onset'):
-                _ = ui_request()
                 if get_key_state('space') == 0:
                     self.abort_trial('Pre-emptive movement')
 
@@ -283,9 +280,14 @@ class symbolic_cues_2025(klibs.Experiment):
             # target phase #
             ################
 
-            n_times_at_thresh = 0
+            # n_times_at_thresh = 0
 
             # Trigger target onset if-and-only-if velocity criteria are met
+            # while self.opti.velocity() < P.velocity_threshold:
+            #     q = pump(True)
+            #     _ = ui_request(queue = q)
+
+            n_times_at_thresh = 0
             while n_times_at_thresh < P.velocity_threshold_run:  # type: ignore[attr-defined]
                 velocity = self.opti.velocity()
                 if velocity >= P.velocity_threshold:  # type: ignore[attr-defined]
@@ -306,18 +308,18 @@ class symbolic_cues_2025(klibs.Experiment):
             ##################
 
             # Monitor reach kinematics until movement complete or timeout
-            times_below_thresh = 0
+            n_times_at_thresh = 0
             while (
                 self.evm.trial_time_ms < self.trial_mt_max
             ) and self.trial_mt is None:
+
                 velocity = self.opti.velocity()
+                if velocity <= P.velocity_threshold:  # type: ignore[attr-defined]
+                    n_times_at_thresh += 1
 
                 # Admoinish any hesitations
                 # TODO: Consider using some distance thresholding instead
-                if velocity < P.velocity_threshold:   # type: ignore
-                    times_below_thresh += 1
-
-                    if times_below_thresh == P.velocity_threshold_run:  # type: ignore[attr-defined]
+                if n_times_at_thresh >= P.velocity_threshold_run:   # type: ignore
                         self.abort_trial('Early reach termination')
 
                 which_bound = self.bounds.which_boundary(mouse_pos())
