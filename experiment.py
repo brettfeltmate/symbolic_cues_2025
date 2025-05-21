@@ -42,8 +42,6 @@ SLOW = 'stopped_early'
 
 class symbolic_cues_2025(klibs.Experiment):
     def setup(self):
-        # if P.development_mode:
-        #     self.console = Console()
 
         # init optitracker
         self.opti = Optitracker(
@@ -103,10 +101,6 @@ class symbolic_cues_2025(klibs.Experiment):
 
         # define necessary locations
         self.locs = {
-            # START: (
-            #     P.screen_x // 2,  # type: ignore[operator]
-            #     P.screen_y - 3 * self.px_cm,  # type: ignore[operator]
-            # ),
             LEFT: (
                 P.screen_x // 2 - (P.h_offset * self.px_cm),  # type: ignore[operator]
                 P.screen_y - (P.v_offset * self.px_cm),  # type: ignore[operator]
@@ -199,7 +193,6 @@ class symbolic_cues_2025(klibs.Experiment):
 
         any_key()
 
-
     def trial_prep(self):
         self.opti.data_dir = self.block_dir + f'/Trial_{P.trial_number}.csv'
 
@@ -216,7 +209,7 @@ class symbolic_cues_2025(klibs.Experiment):
             self.trial_list.pop()
             if not P.practicing
             else self.practice_trials.pop()
-        )  # type: ignore[attr-defined]
+        )
 
         # set target pos as function of cue validity
         if self.cue_laterality == LEFT:
@@ -240,27 +233,18 @@ class symbolic_cues_2025(klibs.Experiment):
         flip()
 
         # trial started by touching start position
-<<<<<<< HEAD
-        while not key_pressed('space'):
-=======
-        # TODO: use keystate instead of mouse_pos/hand_pos
-        while get_key_state("space") == 0:
->>>>>>> origin/adhoc_changes
+        while True:
             q = pump(True)
-            _ = ui_request(queue=q)
+            if key_pressed(key='space', queue=q):
+                break
 
         self.draw_display(fix=True)
 
         # plug into NatNet stream
         self.opti.start_listening()
 
-<<<<<<< HEAD
         # give opti a few frames of lead time
         smart_sleep((self.opti.sample_rate * 3) // 1000)
-=======
-        # give opti 5 frames of lead time
-        smart_sleep(P.query_stagger * 2)  # type: ignore[attr-defined]
->>>>>>> origin/adhoc_changes
 
         # Ensure opti is listening
         if not self.opti.is_listening():
@@ -277,6 +261,7 @@ class symbolic_cues_2025(klibs.Experiment):
             #############
 
             while self.evm.before('cue_onset'):
+                _ = ui_request()
                 if get_key_state('space') == 0:
                     self.abort_trial(EARLY)
 
@@ -294,30 +279,9 @@ class symbolic_cues_2025(klibs.Experiment):
             # target phase #
             ################
 
-<<<<<<< HEAD
             # Hang tight until velocity threshold is met
             while self.opti.velocity() < P.velocity_threshold:  # type: ignore[attr-defined]
                 _ = ui_request()
-=======
-            # n_times_at_thresh = 0
-
-            # Trigger target onset if-and-only-if velocity criteria are met
-            # while self.opti.velocity() < P.velocity_threshold:
-            #     q = pump(True)
-            #     _ = ui_request(queue = q)
-
-            n_times_at_thresh = 0
-            while n_times_at_thresh < P.velocity_threshold_run:  # type: ignore[attr-defined]
-                velocity = self.opti.velocity()
-                if velocity >= P.velocity_threshold:  # type: ignore[attr-defined]
-                    n_times_at_thresh += 1
-
-            # rt = delay between cue onset and meeting movement criteria
-            self.trial_rt = self.evm.trial_time_ms - cue_on_at
-
-            # max mt = rt + movement_time_limit
-            self.trial_mt_max = self.evm.trial_time_ms + P.movement_time_limit  # type: ignore[attr-defined]
->>>>>>> origin/adhoc_changes
 
             # draw target
             self.draw_display(target=True)
@@ -328,27 +292,14 @@ class symbolic_cues_2025(klibs.Experiment):
             ##################
 
             # Monitor reach kinematics until movement complete or timeout
-            n_times_at_thresh = 0
-            while (
+            while self.trial_mt is None and (
                 self.evm.trial_time_ms < self.trial_mt_max
-            ) and self.trial_mt is None:
-
-                velocity = self.opti.velocity()
-                if velocity <= P.velocity_threshold:  # type: ignore[attr-defined]
-                    n_times_at_thresh += 1
+            ):
+                _ = ui_request()
 
                 # Admoinish any hesitations
-<<<<<<< HEAD
-                if velocity < P.velocity_threshold:   # type: ignore
-                    times_below_thresh += 1
-
-                    if times_below_thresh == P.velocity_threshold_run:  # type: ignore[attr-defined]
-                        self.abort_trial(SLOW)
-=======
-                # TODO: Consider using some distance thresholding instead
-                if n_times_at_thresh >= P.velocity_threshold_run:   # type: ignore
-                        self.abort_trial('Early reach termination')
->>>>>>> origin/adhoc_changes
+                if self.opti.velocity() < P.velocity_threshold:  # type: ignore
+                    self.abort_trial(SLOW)
 
                 which_bound = self.bounds.which_boundary(mouse_pos())
 
