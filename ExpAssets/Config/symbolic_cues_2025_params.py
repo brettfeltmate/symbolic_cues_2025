@@ -75,7 +75,7 @@ marker_count = 10
 window_size = 3  # num frames considered when calculating velocity
 rescale_by = 1000  # rescale values from m to mm
 primary_axis = 'z'  # axis to consider for movement (for/back)
-velocity_threshold = 10  # req vel (mm / s) to be considered in-flight
+velocity_threshold = 20  # req vel (mm / s) to be considered in-flight
 movement_time_limit = 450   # movetime bound (ms) before trial abort
 # Cue/exp params #
 cue_types = {  # Proportion, by cue type, of in/validly cued trials
