@@ -364,7 +364,7 @@ class symbolic_cues_2025(klibs.Experiment):
 
         # move data file to aborted folder then cleanup original
         move_to = f'OptiData/aborted/{P.p_id}/Trial_{P.trial_number}_Block_{P.block_number}'
-        move_to += '/_practice.csv' if P.practicing else '.csv'
+        move_to += '_practice.csv' if P.practicing else '.csv'
         os.rename(self.opti.data_dir, move_to)
         os.remove(self.opti.data_dir)
 
