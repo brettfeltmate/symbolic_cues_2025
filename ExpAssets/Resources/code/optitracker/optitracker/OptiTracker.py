@@ -47,6 +47,7 @@ class Optitracker(object):
         primary_axis: str = 'z',
         use_mouse: bool = False,
         display_ppi: int = -1,
+        db: object = None,
     ):
         """Initialize the OptiTracker object.
 
@@ -123,6 +124,7 @@ class Optitracker(object):
         if primary_axis not in ['x', 'y', 'z', 'all']:
             raise ValueError('Primary axis must be one of: x, y, z, all')
 
+        self.__db = db
         self.__primary_axis = primary_axis
 
     @property
@@ -587,7 +589,9 @@ class Optitracker(object):
         # Filter for relevant frames
         frames = frames[frames['frame_number'] > lookback]
 
-        print(f"\n\nReading till frame {lookback} from file {self.__data_dir}\n\n")
+        print(
+            f'\n\nReading till frame {lookback} from file {self.__data_dir}\n\n'
+        )
 
         return frames
 
