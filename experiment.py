@@ -384,7 +384,7 @@ class symbolic_cues_2025(klibs.Experiment):
             'abort_reason': err,
         }
 
-        self.db.insert(data=abort_info, table='aborts')  # type: ignore
+        self.db.insert(data=abort_info, table='aborted_trials')  # type: ignore
 
         if P.practicing:
             self.practice_trials.append(

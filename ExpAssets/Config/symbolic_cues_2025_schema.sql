@@ -21,7 +21,7 @@ movement_time text not null,
 touched_target text not null
 ) ;
 
-CREATE TABLE aborts (
+CREATE TABLE aborted_trials (
 id integer primary key autoincrement not null,
 participant_id integer not null references participants (id),
 practicing text not null,
