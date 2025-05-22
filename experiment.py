@@ -65,8 +65,6 @@ class symbolic_cues_2025(klibs.Experiment):
 
             os.mkdir(f'OptiData/testing/{P.p_id}')
 
-            os.mkdir(f'OptiData/aborted/{P.p_id}')
-
             if P.run_practice_blocks:
                 if not os.path.exists('OptiData/practice'):
                     os.mkdir('OptiData/practice')
@@ -362,29 +360,7 @@ class symbolic_cues_2025(klibs.Experiment):
         if self.opti.is_listening():
             self.opti.stop_listening()
 
-        # move data file to aborted folder then cleanup original
-        move_to = f'OptiData/aborted/{P.p_id}/Trial_{P.trial_number}_Block_{P.block_number}'
-        move_to += '_practice.csv' if P.practicing else '.csv'
-        os.rename(self.opti.data_dir, move_to)
         os.remove(self.opti.data_dir)
-
-        # log reason for aborting
-        abort_info = {
-            'practicing': P.practicing,
-            'block_num': P.block_number,
-            'trial_num': P.trial_number,
-            'cue_reliability': self.cue_validity,
-            'cue_laterality': self.cue_laterality,
-            'cue_validity': self.cue_validity,
-            'reaction_time': self.trial_rt if not None else 'NA',
-            'movement_time': self.trial_mt if not None else 'NA',
-            'touched_target': self.trial_selected == self.target_side
-            if self.trial_selected is not None
-            else 'NA',
-            'abort_reason': err,
-        }
-
-        self.db.insert(data=abort_info, table='aborts')  # type: ignore
 
         if P.practicing:
             self.practice_trials.append(
