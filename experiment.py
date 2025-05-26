@@ -18,13 +18,12 @@ from klibs.KLGraphics import KLNumpySurface as kln
 from klibs.KLGraphics import blit, fill, flip
 from klibs.KLUserInterface import (
     any_key,
-    key_pressed,
     mouse_pos,
     ui_request,
     show_cursor,
     hide_cursor,
 )
-from klibs.KLUtilities import pump, smart_sleep
+from klibs.KLUtilities import smart_sleep
 from Optitracker.optitracker.OptiTracker import Optitracker  # type: ignore[import]
 from get_key_state import get_key_state  # type: ignore[import]
 
@@ -101,6 +100,10 @@ class symbolic_cues_2025(klibs.Experiment):
 
         # define necessary locations
         self.locs = {
+            START: (
+                P.screen_x // 2,  # type: ignore[operator]
+                P.screen_y - 3 * self.px_cm,  # type: ignore[operator]
+            ),
             LEFT: (
                 P.screen_x // 2 - (P.h_offset * self.px_cm),  # type: ignore[operator]
                 P.screen_y - (P.v_offset * self.px_cm),  # type: ignore[operator]
@@ -126,6 +129,11 @@ class symbolic_cues_2025(klibs.Experiment):
                 CircleBoundary(
                     label=RIGHT,
                     center=self.locs[RIGHT],
+                    radius=P.circ_size * self.px_cm / 2,  # type: ignore[attr-defined]
+                ),
+                CircleBoundary(
+                    label=START,
+                    center=self.locs[START],
                     radius=P.circ_size * self.px_cm / 2,  # type: ignore[attr-defined]
                 ),
             ]
@@ -194,6 +202,7 @@ class symbolic_cues_2025(klibs.Experiment):
         any_key()
 
     def trial_prep(self):
+        mouse_pos(position=[0, 0])
         self.opti.data_dir = self.block_dir + f'/Trial_{P.trial_number}.csv'
 
         self.trial_rt = None
@@ -225,7 +234,7 @@ class symbolic_cues_2025(klibs.Experiment):
         # Remind user how to start trials
         fill()
         message(
-            'Press and HOLD space until the cue appears.',
+            'Place and HOLD your finger within the nearest circle until the cue appears.',
             location=P.screen_c,
             registration=5,
             blit_txt=True,
@@ -233,10 +242,8 @@ class symbolic_cues_2025(klibs.Experiment):
         flip()
 
         # trial started by touching start position
-        while True:
-            q = pump(True)
-            if key_pressed(key='space', queue=q):
-                break
+        while not self.bounds.within_boundary(START, mouse_pos()):
+            _ = ui_request()
 
         self.draw_display(fix=True)
 
@@ -261,18 +268,11 @@ class symbolic_cues_2025(klibs.Experiment):
             #############
 
             while self.evm.before('cue_onset'):
-                _ = ui_request()
-                if get_key_state('space') == 0:
+                if not self.bounds.within_boundary(START, mouse_pos()):
                     self.abort_trial(EARLY)
 
             self.draw_display(cue=True)
             cue_on_at = self.evm.trial_time_ms
-
-            while get_key_state('space') == 1:
-                _ = ui_request()
-
-            self.trial_rt = self.evm.trial_time_ms - cue_on_at
-            self.trial_mt_max = self.evm.trial_time_ms + P.movement_time_limit  # type: ignore[attr-defined]
             ########################
 
             ################
@@ -282,6 +282,9 @@ class symbolic_cues_2025(klibs.Experiment):
             # Hang tight until velocity threshold is met
             while self.opti.velocity() < P.velocity_threshold:  # type: ignore[attr-defined]
                 _ = ui_request()
+
+            self.trial_rt = self.evm.trial_time_ms - cue_on_at
+            self.trial_mt_max = self.evm.trial_time_ms + P.movement_time_limit  # type: ignore[attr-defined]
 
             # draw target
             self.draw_display(target=True)
