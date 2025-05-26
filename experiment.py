@@ -64,8 +64,6 @@ class symbolic_cues_2025(klibs.Experiment):
 
             os.mkdir(f'OptiData/testing/{P.p_id}')
 
-            os.mkdir(f'OptiData/aborted/{P.p_id}')
-
             if P.run_practice_blocks:
                 if not os.path.exists('OptiData/practice'):
                     os.mkdir('OptiData/practice')
