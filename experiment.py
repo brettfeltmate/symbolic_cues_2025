@@ -6,6 +6,7 @@ __author__ = 'Brett Feltmate'
 import os
 from copy import deepcopy
 from random import shuffle, sample
+from math import sqrt, trunc
 
 
 import klibs
@@ -25,7 +26,8 @@ from klibs.KLUserInterface import (
 )
 from klibs.KLUtilities import smart_sleep
 from Optitracker.optitracker.OptiTracker import Optitracker  # type: ignore[import]
-from get_key_state import get_key_state  # type: ignore[import]
+
+# from get_key_state import get_key_state  # type: ignore[import]
 
 BLACK = (0, 0, 0, 255)
 HIGH = 'HIGH'
@@ -259,6 +261,8 @@ class symbolic_cues_2025(klibs.Experiment):
 
         show_cursor() if P.condition == 'mouse' else hide_cursor()
 
+        starting_hand_pos = self.opti.position()
+
         while self.evm.before('trial_timeout') and self.trial_mt is None:
 
             #############
@@ -266,7 +270,8 @@ class symbolic_cues_2025(klibs.Experiment):
             #############
 
             while self.evm.before('cue_onset'):
-                if not self.bounds.within_boundary(START, mouse_pos()):
+
+                if self.euclidean_distance(self.opti.position(), starting_hand_pos) >= P.early_start_boundary:  # type: ignore[attr-defined]
                     self.abort_trial(EARLY)
 
             self.draw_display(cue=True)
@@ -427,3 +432,8 @@ class symbolic_cues_2025(klibs.Experiment):
 
         if msg:
             smart_sleep(1000)
+
+    def euclidean_distance(
+        self, p0: tuple[int, int, int], p1: tuple[int, int, int]
+    ) -> int:
+        return trunc(sqrt(sum((a - b) ** 2 for a, b in zip(p0, p1))))

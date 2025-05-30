@@ -77,6 +77,7 @@ rescale_by = 1000  # rescale values from m to mm
 primary_axis = 'z'  # axis to consider for movement (for/back)
 velocity_threshold = 20  # req vel (mm / s) to be considered in-flight
 movement_time_limit = 450   # movetime bound (ms) before trial abort
+early_start_boundary = 5  # cm
 # Cue/exp params #
 cue_types = {  # Proportion, by cue type, of in/validly cued trials
     'HIGH': {'LEFT': [0.80, 0.20], 'RIGHT': [0.20, 0.80]},
@@ -103,8 +104,8 @@ for reliability in cue_types.keys():
             trial_list.append((reliability, laterality, False))
 
 # visual params #
-v_offset = 21
-h_offset = 7.5
+v_offset = 40
+h_offset = 10
 circ_size = 3
 target_size = circ_size * 0.95
 fix_size = 4
