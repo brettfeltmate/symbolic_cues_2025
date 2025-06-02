@@ -6,6 +6,7 @@ __author__ = 'Brett Feltmate'
 import os
 from copy import deepcopy
 from random import shuffle, sample
+from math import sqrt, trunc
 
 
 import klibs
@@ -18,15 +19,15 @@ from klibs.KLGraphics import KLNumpySurface as kln
 from klibs.KLGraphics import blit, fill, flip
 from klibs.KLUserInterface import (
     any_key,
-    key_pressed,
     mouse_pos,
     ui_request,
     show_cursor,
     hide_cursor,
 )
-from klibs.KLUtilities import pump, smart_sleep
+from klibs.KLUtilities import smart_sleep
 from Optitracker.optitracker.OptiTracker import Optitracker  # type: ignore[import]
-from get_key_state import get_key_state  # type: ignore[import]
+
+# from get_key_state import get_key_state  # type: ignore[import]
 
 BLACK = (0, 0, 0, 255)
 HIGH = 'HIGH'
@@ -65,8 +66,6 @@ class symbolic_cues_2025(klibs.Experiment):
 
             os.mkdir(f'OptiData/testing/{P.p_id}')
 
-            os.mkdir(f'OptiData/aborted/{P.p_id}')
-
             if P.run_practice_blocks:
                 if not os.path.exists('OptiData/practice'):
                     os.mkdir('OptiData/practice')
@@ -101,6 +100,10 @@ class symbolic_cues_2025(klibs.Experiment):
 
         # define necessary locations
         self.locs = {
+            START: (
+                P.screen_x // 2,  # type: ignore[operator]
+                P.screen_y - 3 * self.px_cm,  # type: ignore[operator]
+            ),
             LEFT: (
                 P.screen_x // 2 - (P.h_offset * self.px_cm),  # type: ignore[operator]
                 P.screen_y - (P.v_offset * self.px_cm),  # type: ignore[operator]
@@ -126,6 +129,11 @@ class symbolic_cues_2025(klibs.Experiment):
                 CircleBoundary(
                     label=RIGHT,
                     center=self.locs[RIGHT],
+                    radius=P.circ_size * self.px_cm / 2,  # type: ignore[attr-defined]
+                ),
+                CircleBoundary(
+                    label=START,
+                    center=self.locs[START],
                     radius=P.circ_size * self.px_cm / 2,  # type: ignore[attr-defined]
                 ),
             ]
@@ -194,6 +202,7 @@ class symbolic_cues_2025(klibs.Experiment):
         any_key()
 
     def trial_prep(self):
+        mouse_pos(position=[0, 0])
         self.opti.data_dir = self.block_dir + f'/Trial_{P.trial_number}.csv'
 
         self.trial_rt = None
@@ -225,7 +234,7 @@ class symbolic_cues_2025(klibs.Experiment):
         # Remind user how to start trials
         fill()
         message(
-            'Press and HOLD space until the cue appears.',
+            'Place and HOLD your finger within the nearest circle until the cue appears.',
             location=P.screen_c,
             registration=5,
             blit_txt=True,
@@ -233,10 +242,8 @@ class symbolic_cues_2025(klibs.Experiment):
         flip()
 
         # trial started by touching start position
-        while True:
-            q = pump(True)
-            if key_pressed(key='space', queue=q):
-                break
+        while not self.bounds.within_boundary(START, mouse_pos()):
+            _ = ui_request()
 
         self.draw_display(fix=True)
 
@@ -254,6 +261,8 @@ class symbolic_cues_2025(klibs.Experiment):
 
         show_cursor() if P.condition == 'mouse' else hide_cursor()
 
+        starting_hand_pos = self.opti.position()
+
         while self.evm.before('trial_timeout') and self.trial_mt is None:
 
             #############
@@ -261,18 +270,12 @@ class symbolic_cues_2025(klibs.Experiment):
             #############
 
             while self.evm.before('cue_onset'):
-                _ = ui_request()
-                if get_key_state('space') == 0:
+
+                if self.euclidean_distance(self.opti.position(), starting_hand_pos) >= P.early_start_boundary:  # type: ignore[attr-defined]
                     self.abort_trial(EARLY)
 
             self.draw_display(cue=True)
             cue_on_at = self.evm.trial_time_ms
-
-            while get_key_state('space') == 1:
-                _ = ui_request()
-
-            self.trial_rt = self.evm.trial_time_ms - cue_on_at
-            self.trial_mt_max = self.evm.trial_time_ms + P.movement_time_limit  # type: ignore[attr-defined]
             ########################
 
             ################
@@ -282,6 +285,9 @@ class symbolic_cues_2025(klibs.Experiment):
             # Hang tight until velocity threshold is met
             while self.opti.velocity() < P.velocity_threshold:  # type: ignore[attr-defined]
                 _ = ui_request()
+
+            self.trial_rt = self.evm.trial_time_ms - cue_on_at
+            self.trial_mt_max = self.evm.trial_time_ms + P.movement_time_limit  # type: ignore[attr-defined]
 
             # draw target
             self.draw_display(target=True)
@@ -362,12 +368,9 @@ class symbolic_cues_2025(klibs.Experiment):
         if self.opti.is_listening():
             self.opti.stop_listening()
 
-        # move data file to aborted folder then cleanup original
-        move_to = f'OptiData/aborted/{P.p_id}/Trial_{P.trial_number}_Block_{P.block_number}'
-        move_to += '_practice.csv' if P.practicing else '.csv'
-        os.rename(self.opti.data_dir, move_to)
         os.remove(self.opti.data_dir)
 
+<<<<<<< HEAD
         # log reason for aborting
         abort_info = {
             'practicing': P.practicing,
@@ -386,6 +389,8 @@ class symbolic_cues_2025(klibs.Experiment):
 
         self.db.insert(data=abort_info, table='aborted_trials')  # type: ignore
 
+=======
+>>>>>>> touchscreen_start
         if P.practicing:
             self.practice_trials.append(
                 (self.cue_reliability, self.cue_laterality, self.cue_validity)
@@ -448,3 +453,8 @@ class symbolic_cues_2025(klibs.Experiment):
 
         if msg:
             smart_sleep(1000)
+
+    def euclidean_distance(
+        self, p0: tuple[int, int, int], p1: tuple[int, int, int]
+    ) -> int:
+        return trunc(sqrt(sum((a - b) ** 2 for a, b in zip(p0, p1))))
