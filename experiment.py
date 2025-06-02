@@ -265,8 +265,23 @@ class symbolic_cues_2025(klibs.Experiment):
             #############
 
             while self.evm.before('cue_onset'):
+                dist = self.euclidean_distance(
+                    self.opti.position(), starting_hand_pos
+                )
+                is_at_start = self.bounds.within_boundary(START, mouse_pos())
 
-                if self.euclidean_distance(self.opti.position(), starting_hand_pos) >= P.early_start_boundary:  # type: ignore[attr-defined]
+                if dist >= P.early_start_boundary or not is_at_start:  # type: ignore[attr-defined]
+                    print('\n')
+                    print(
+                        '------------------------------------------------------------------'
+                    )
+                    print(
+                        f'Early movement detected. Dist: {dist}, is_at_start: {is_at_start}'
+                    )
+                    print(
+                        '------------------------------------------------------------------'
+                    )
+                    print('\n')
                     self.abort_trial(EARLY)
 
             self.draw_display(cue=True)
