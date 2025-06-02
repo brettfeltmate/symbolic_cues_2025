@@ -60,23 +60,18 @@ class symbolic_cues_2025(klibs.Experiment):
             # set up initial data directories for mocap recordings
             if not os.path.exists('OptiData'):
                 os.mkdir('OptiData')
-
-            if not os.path.exists('OptiData/testing'):
                 os.mkdir('OptiData/testing')
+                os.mkdir('OptiData/practice')
+
+            if not os.path.exists('OptiData/aborted'):
+                os.mkdir
 
             os.mkdir(f'OptiData/testing/{P.p_id}')
-
-            if P.run_practice_blocks:
-                if not os.path.exists('OptiData/practice'):
-                    os.mkdir('OptiData/practice')
-                os.mkdir(f'OptiData/practice/{P.p_id}')
+            os.mkdir(f'OptiData/practice/{P.p_id}')
+            os.mkdir(f'OptiData/aborted/{P.p_id}')
 
         else:
             P.movement_time_limit = 1000  # type: ignore[attr-defined]
-
-        # if P.development_mode:
-        if os.path.exists('OptiData/velocity_log.txt'):
-            os.remove('OptiData/velocity_log.txt')
 
         # get base unit for sizings & positionings
         self.px_cm = P.ppi / 2.54
@@ -368,9 +363,34 @@ class symbolic_cues_2025(klibs.Experiment):
         if self.opti.is_listening():
             self.opti.stop_listening()
 
-        os.remove(self.opti.data_dir)
+        # move and retain optidata from aborted trials
+        rename_as = (
+            f'OptiData/aborted/{P.p_id}/'
+            'Testing'
+            f'{"Practice" if P.practicing else "Testing"}'
+            f'_Block{P.block_number}_Trial{P.trial_number}.csv'
+        )
 
-<<<<<<< HEAD
+        os.rename(self.opti.data_dir, rename_as)
+
+        # log abort details
+        abort_info = {
+            'practicing': P.practicing,
+            'block_num': P.block_number,
+            'trial_num': P.trial_number,
+            'cue_reliability': self.cue_validity,
+            'cue_laterality': self.cue_laterality,
+            'cue_validity': self.cue_validity,
+            'reaction_time': self.trial_rt if not None else 'NA',
+            'movement_time': self.trial_mt if not None else 'NA',
+            'touched_target': self.trial_selected == self.target_side
+            if self.trial_selected is not None
+            else 'NA',
+            'reason': err,
+        }
+
+        self.db.insert(data=abort_info, table='aborts')  # type: ignore
+
         # log reason for aborting
         abort_info = {
             'practicing': P.practicing,
@@ -389,8 +409,6 @@ class symbolic_cues_2025(klibs.Experiment):
 
         self.db.insert(data=abort_info, table='aborted_trials')  # type: ignore
 
-=======
->>>>>>> touchscreen_start
         if P.practicing:
             self.practice_trials.append(
                 (self.cue_reliability, self.cue_laterality, self.cue_validity)
