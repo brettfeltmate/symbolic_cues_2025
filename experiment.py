@@ -276,7 +276,7 @@ class symbolic_cues_2025(klibs.Experiment):
                         '------------------------------------------------------------------'
                     )
                     print(
-                        f'Early movement detected. Dist: {dist}, is_at_start: {is_at_start}'
+                        f'\nEarly movement detected.\n\tdist: {dist},\n\tis_at_start: {is_at_start}\n'
                     )
                     print(
                         '------------------------------------------------------------------'
