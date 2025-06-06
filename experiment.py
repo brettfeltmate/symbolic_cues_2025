@@ -23,11 +23,12 @@ from klibs.KLUserInterface import (
     ui_request,
     show_cursor,
     hide_cursor,
+    key_pressed,
 )
-from klibs.KLUtilities import smart_sleep
+from klibs.KLUtilities import smart_sleep, pump
 from Optitracker.optitracker.OptiTracker import Optitracker  # type: ignore[import]
+from get_key_state import get_key_state  # type: ignore[import]
 
-# from get_key_state import get_key_state  # type: ignore[import]
 
 BLACK = (0, 0, 0, 255)
 HIGH = 'HIGH'
@@ -229,16 +230,17 @@ class symbolic_cues_2025(klibs.Experiment):
         # Remind user how to start trials
         fill()
         message(
-            'Place and HOLD your finger within the nearest circle until the cue appears.',
+            'Press and HOLD space until the cue appears.',
             location=P.screen_c,
             registration=5,
             blit_txt=True,
         )
         flip()
 
-        # trial started by touching start position
-        while not self.bounds.within_boundary(START, mouse_pos()):
-            _ = ui_request()
+        while True:  # participant readiness signalled by keypress
+            q = pump(True)
+            if key_pressed(key='space', queue=q):
+                break
 
         self.draw_display(fix=True)
 
@@ -264,10 +266,19 @@ class symbolic_cues_2025(klibs.Experiment):
             # cue phase #
             #############
 
+            # restrict movement until go signal received
+
             while self.evm.before('cue_onset'):
+
                 dist = self.euclidean_distance(
                     self.opti.position(), starting_hand_pos
                 )
+
+                _ = ui_request()
+
+                if get_key_state('space') == 0:
+                    self.abort_trial('Premature reach')
+
                 is_at_start = self.bounds.within_boundary(START, mouse_pos())
 
                 if dist >= P.early_start_boundary or not is_at_start:  # type: ignore[attr-defined]
@@ -276,13 +287,12 @@ class symbolic_cues_2025(klibs.Experiment):
                         '------------------------------------------------------------------'
                     )
                     print(
-                        f'Early movement detected. Dist: {dist}, is_at_start: {is_at_start}'
+                        f'Threshold crossed in B{P.block_number}-T{P.trial_number}!\r\tDist: {dist}, is_at_start: {is_at_start}'
                     )
                     print(
                         '------------------------------------------------------------------'
                     )
                     print('\n')
-                    self.abort_trial(EARLY)
 
             self.draw_display(cue=True)
             cue_on_at = self.evm.trial_time_ms
