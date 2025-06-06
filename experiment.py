@@ -435,6 +435,7 @@ class symbolic_cues_2025(klibs.Experiment):
         if any([fix, cue, target]):
             blit(self.placeholder, location=self.locs[LEFT], registration=5)
             blit(self.placeholder, location=self.locs[RIGHT], registration=5)
+            blit(self.placeholder, location=self.locs[START], registration=5)
 
             if fix:
                 blit(self.fix, location=self.locs[CENTER], registration=5)
