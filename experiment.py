@@ -270,9 +270,9 @@ class symbolic_cues_2025(klibs.Experiment):
 
             while self.evm.before('cue_onset'):
 
-                dist = self.euclidean_distance(
-                    self.opti.position(), starting_hand_pos
-                )
+                # dist = self.euclidean_distance(
+                #     self.opti.position(), starting_hand_pos
+                # )
 
                 _ = ui_request()
 
@@ -281,18 +281,18 @@ class symbolic_cues_2025(klibs.Experiment):
 
                 is_at_start = self.bounds.within_boundary(START, mouse_pos())
 
-                if dist >= P.early_start_boundary or not is_at_start:  # type: ignore[attr-defined]
-                    print('\n')
-                    print(
-                        '------------------------------------------------------------------'
-                    )
-                    print(
-                        f'Threshold crossed in B{P.block_number}-T{P.trial_number}!\r\tDist: {dist}, is_at_start: {is_at_start}'
-                    )
-                    print(
-                        '------------------------------------------------------------------'
-                    )
-                    print('\n')
+                # if dist >= P.early_start_boundary or not is_at_start:  # type: ignore[attr-defined]
+                #     print('\n')
+                #     print(
+                #         '------------------------------------------------------------------'
+                #     )
+                #     print(
+                #         f'Threshold crossed in B{P.block_number}-T{P.trial_number}!\r\tDist: {dist}, is_at_start: {is_at_start}'
+                #     )
+                #     print(
+                #         '------------------------------------------------------------------'
+                #     )
+                #     print('\n')
 
             self.draw_display(cue=True)
             cue_on_at = self.evm.trial_time_ms
@@ -389,50 +389,51 @@ class symbolic_cues_2025(klibs.Experiment):
             self.opti.stop_listening()
 
         # move and retain optidata from aborted trials
-        rename_as = (
-            f'OptiData/aborted/{P.p_id}/'
-            'Testing'
-            f'{"Practice" if P.practicing else "Testing"}'
-            f'_Block{P.block_number}_Trial{P.trial_number}.csv'
-        )
-
-        os.rename(self.opti.data_dir, rename_as)
+        os.remove(self.opti.data_dir)
+        # rename_as = (
+        #     f'OptiData/aborted/{P.p_id}/'
+        #     'Testing'
+        #     f'{"Practice" if P.practicing else "Testing"}'
+        #     f'_Block{P.block_number}_Trial{P.trial_number}.csv'
+        # )
+        #
+        # os.rename(self.opti.data_dir, rename_as)
 
         # log abort details
-        abort_info = {
-            'practicing': P.practicing,
-            'block_num': P.block_number,
-            'trial_num': P.trial_number,
-            'cue_reliability': self.cue_validity,
-            'cue_laterality': self.cue_laterality,
-            'cue_validity': self.cue_validity,
-            'reaction_time': self.trial_rt if not None else 'NA',
-            'movement_time': self.trial_mt if not None else 'NA',
-            'touched_target': self.trial_selected == self.target_side
-            if self.trial_selected is not None
-            else 'NA',
-            'reason': err,
-        }
+        # abort_info = {
+        #     'practicing': P.practicing,
+        #     'block_num': P.block_number,
+        #     'trial_num': P.trial_number,
+        #     'cue_reliability': self.cue_validity,
+        #     'cue_laterality': self.cue_laterality,
+        #     'cue_validity': self.cue_validity,
+        #     'reaction_time': self.trial_rt if not None else 'NA',
+        #     'movement_time': self.trial_mt if not None else 'NA',
+        #     'touched_target': self.trial_selected == self.target_side
+        #     if self.trial_selected is not None
+        #     else 'NA',
+        #     'reason': err,
+        # }
 
-        self.db.insert(data=abort_info, table='aborts')  # type: ignore
+        # self.db.insert(data=abort_info, table='aborts')  # type: ignore
 
-        # log reason for aborting
-        abort_info = {
-            'practicing': P.practicing,
-            'block_num': P.block_number,
-            'trial_num': P.trial_number,
-            'cue_reliability': self.cue_validity,
-            'cue_laterality': self.cue_laterality,
-            'cue_validity': self.cue_validity,
-            'reaction_time': self.trial_rt if not None else 'NA',
-            'movement_time': self.trial_mt if not None else 'NA',
-            'touched_target': self.trial_selected == self.target_side
-            if self.trial_selected is not None
-            else 'NA',
-            'abort_reason': err,
-        }
-
-        self.db.insert(data=abort_info, table='aborted_trials')  # type: ignore
+        # # log reason for aborting
+        # abort_info = {
+        #     'practicing': P.practicing,
+        #     'block_num': P.block_number,
+        #     'trial_num': P.trial_number,
+        #     'cue_reliability': self.cue_validity,
+        #     'cue_laterality': self.cue_laterality,
+        #     'cue_validity': self.cue_validity,
+        #     'reaction_time': self.trial_rt if not None else 'NA',
+        #     'movement_time': self.trial_mt if not None else 'NA',
+        #     'touched_target': self.trial_selected == self.target_side
+        #     if self.trial_selected is not None
+        #     else 'NA',
+        #     'abort_reason': err,
+        # }
+        #
+        # self.db.insert(data=abort_info, table='aborted_trials')  # type: ignore
 
         if P.practicing:
             self.practice_trials.append(
