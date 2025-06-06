@@ -232,11 +232,13 @@ class symbolic_cues_2025(klibs.Experiment):
         )
         flip()
 
+        smart_sleep(500)
+
+        self.draw_display(fix=True)
         # trial started by touching start position
         while not self.bounds.within_boundary(START, mouse_pos()):
             _ = ui_request()
 
-        self.draw_display(fix=True)
 
         # plug into NatNet stream
         self.opti.start_listening()
@@ -252,7 +254,7 @@ class symbolic_cues_2025(klibs.Experiment):
 
         show_cursor() if P.condition == 'mouse' else hide_cursor()
 
-        starting_hand_pos = self.opti.position()
+        # starting_hand_pos = self.opti.position()
 
         while self.evm.before('trial_timeout') and self.trial_mt is None:
 
