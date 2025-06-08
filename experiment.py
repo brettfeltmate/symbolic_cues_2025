@@ -5,9 +5,8 @@ __author__ = 'Brett Feltmate'
 
 import os
 from copy import deepcopy
-from random import shuffle, sample
-from math import sqrt, trunc
-
+from random import shuffle
+import numpy as np
 
 import klibs
 from klibs import P
@@ -16,14 +15,8 @@ from klibs.KLCommunication import message
 from klibs.KLExceptions import TrialException
 from klibs.KLGraphics import KLDraw as kld
 from klibs.KLGraphics import KLNumpySurface as kln
-from klibs.KLGraphics import blit, fill, flip
-from klibs.KLUserInterface import (
-    any_key,
-    mouse_pos,
-    ui_request,
-    show_cursor,
-    hide_cursor,
-)
+from klibs.KLGraphics import blit, fill, flip, clear
+from klibs.KLUserInterface import any_key, mouse_pos, ui_request, hide_cursor
 from klibs.KLUtilities import smart_sleep
 from Optitracker.optitracker.OptiTracker import Optitracker  # type: ignore[import]
 
@@ -54,20 +47,17 @@ class symbolic_cues_2025(klibs.Experiment):
             display_ppi=P.ppi,  # type: ignore[attr-defined]
         )
 
-        self.data_dir = 'OptiData'
+        if not os.path.exists('OptiData'):
+            os.mkdir('OptiData')
 
-        if P.condition != 'mouse':
-            # set up initial data directories for mocap recordings
-            if not os.path.exists('OptiData'):
-                os.mkdir('OptiData')
-                os.mkdir('OptiData/testing')
-                os.mkdir('OptiData/practice')
+        self.opti_path = f'OptiData/{P.p_id}'
 
-            os.mkdir(f'OptiData/testing/{P.p_id}')
-            os.mkdir(f'OptiData/practice/{P.p_id}')
+        if os.path.exists(self.opti_path):
+            raise RuntimeError(
+                f'Participant ID {P.p_id} already exists!\nYou likely ran `klibs hard-reset`, but did not re/move existing optidata.'
+            )
 
-        else:
-            P.movement_time_limit = 1000  # type: ignore[attr-defined]
+        os.mkdir(self.opti_path)
 
         # get base unit for sizings & positionings
         self.px_cm = P.ppi / 2.54
@@ -153,63 +143,43 @@ class symbolic_cues_2025(klibs.Experiment):
 
         shuffle(self.trial_list)
 
-        if P.run_practice_blocks:
-            self.practice_trials = sample(self.trial_list, P.trials_per_practice_block)  # type: ignore[attr-defined]
-
     def block(self):
-        if P.practicing:
-            self.block_dir = (
-                f'OptiData/practice/{P.p_id}/Block_{P.block_number}'
-            )
-            if not os.path.exists(self.block_dir):
-                os.mkdir(self.block_dir)
-
-        else:
-            self.block_dir = (
-                f'OptiData/testing/{P.p_id}/Block_{P.block_number}'
-            )
-            if not os.path.exists(self.block_dir):
-                os.mkdir(self.block_dir)
+        self.opti_path += f'/Block_{P.block_number}'
+        fill()
+        instrux = (
+            'Task Instructions:\n\n'
+            'Your task is to reach out and tap on a target circle quickly and accurately.\n'
+            '\tNOTE: the target will not appear until AFTER you start your reach.\n\n'
+            'In each trial, you will first see three (unfilled) circles, and a crosshair.\n'
+            'To start a trial, tap the start (nearest) circle with your finger.\n'
+            'Then, WAIT until the go-signal (image) replaces the crosshair.\n'
+            '\tNOTE: Moving prior to the go-signal will terminate the trial.\n\n'
+            'When you see the signal, start reaching towards the far circles.\n'
+            "Once you start reaching, one of them will 'fill-in'. That is your target.\n"
+            '\tNOTE: Once your reach is in motion, you cannot stop or otherwise hesitate.\n\n'
+            'When you are ready, press any key to start the experiment.'
+        )
 
         fill()
-
-        block_msg = (
-            'Tap enter to start the block.'
-            '\n'
-            'To start each trial, press and HOLD space until the cue appears.'
-        )
-
-        if P.practicing:
-            block_msg += '\n\n(This is a practice block.)'
-
-        message(
-            block_msg,
-            location=P.screen_c,
-            registration=5,
-            blit_txt=True,
-        )
+        message(instrux[0], location=P.screen_c, registration=5, blit_txt=True)
         flip()
 
         any_key()
 
     def trial_prep(self):
+        # ensure mouse isn't lingering within any monitored space
         mouse_pos(position=[0, 0])
-        self.opti.data_dir = self.block_dir + f'/Trial_{P.trial_number}.csv'
 
         self.trial_rt = None
-        self.trial_mt = None
-        self.trial_mt_max = None
-        self.trial_selected = None
+        self.trial_movement_time = None
+        self.trial_movement_timeout = None
+        self.trial_selected_item = None
 
         (  # get params for trial
             self.cue_reliability,
             self.cue_laterality,
             self.cue_validity,
-        ) = (
-            self.trial_list.pop()
-            if not P.practicing
-            else self.practice_trials.pop()
-        )
+        ) = self.trial_list.pop()
 
         # set target pos as function of cue validity
         if self.cue_laterality == LEFT:
@@ -217,72 +187,65 @@ class symbolic_cues_2025(klibs.Experiment):
         else:
             self.target_side = RIGHT if self.cue_validity else LEFT
 
+        self.opti_path += f'_Trial_{P.trial_number}_{self.cue_reliability}_{self.cue_laterality}_{self.cue_validity}.csv'
+
         # trial event timings
         self.evm.add_event('cue_onset', P.cue_onset)  # type: ignore[attr-defined]
 
         self.evm.add_event('trial_timeout', P.trial_time_max, after='cue_onset')  # type: ignore[attr-defined]
 
-        # Remind user how to start trials
-        fill()
-        message(
-            'Place and HOLD your finger within the nearest circle until the cue appears.',
-            location=P.screen_c,
-            registration=5,
-            blit_txt=True,
+        # Instruct user on how to start
+        instrux = (
+            'Tap the start (nearest) circle to begin the trial.\nThen keep still until the go-signal appears.',
         )
-        flip()
 
-        smart_sleep(500)
+        self.draw_display(msg=instrux[0])
 
-        self.draw_display(fix=True)
         # trial started by touching start position
         while not self.bounds.within_boundary(START, mouse_pos()):
             _ = ui_request()
 
-
         # plug into NatNet stream
         self.opti.start_listening()
 
-        # give opti a few frames of lead time
-        smart_sleep(60)
+        # give opti a 10 frame lead
+        smart_sleep(1.0 / 120 * 10)
 
         # Ensure opti is listening
         if not self.opti.is_listening():
             raise RuntimeError('Failed to connect to OptiTrack system')
 
     def trial(self):  # type: ignore[override]
+        self.draw_display(fix=True)
 
-        show_cursor() if P.condition == 'mouse' else hide_cursor()
+        hide_cursor()
 
-        # starting_hand_pos = self.opti.position()
+        hand_pos_initial = self.opti.position()
 
-        while self.evm.before('trial_timeout') and self.trial_mt is None:
+        while self.evm.before('trial_timeout'):
 
             #############
             # cue phase #
             #############
 
             while self.evm.before('cue_onset'):
-                if self.opti.velocity() < P.pre_velocity_threshold:  # type: ignore[attr-defined]
+                _ = ui_request()
+
+                hand_velocity_current = self.opti.velocity(axis='all')
+
+                if hand_velocity_current > P.velocity_threshold:  # type: ignore[attr-defined]
+                    print(
+                        f'\nEarly movement detected!\nReported velocity: {hand_velocity_current:.1f} mm/s\n'
+                    )
                     self.abort_trial(EARLY)
-                # dist = self.euclidean_distance(
-                #     self.opti.position(), starting_hand_pos
-                # )
-                # is_at_start = self.bounds.within_boundary(START, mouse_pos())
-                #
-                # if dist >= P.early_start_boundary or not is_at_start:  # type: ignore[attr-defined]
-                #     print('\n')
-                #     print(
-                #         '------------------------------------------------------------------'
-                #     )
-                #     print(
-                #         f'\nEarly movement detected.\n\tdist: {dist},\n\tis_at_start: {is_at_start}\n'
-                #     )
-                #     print(
-                #         '------------------------------------------------------------------'
-                #     )
-                #     print('\n')
-                #     self.abort_trial(EARLY)
+
+                hand_pos_current = self.opti.position()
+                wavered = self.euclidean(hand_pos_initial, hand_pos_current)
+                if wavered > P.early_start_boundary:  # type: ignore[attr-defined]
+                    print(
+                        f'\nEarly movement detected!\nReported distance from initial touch-point: {wavered} mm'
+                    )
+                    self.abort_trial(EARLY)
 
             self.draw_display(cue=True)
             cue_on_at = self.evm.trial_time_ms
@@ -292,15 +255,25 @@ class symbolic_cues_2025(klibs.Experiment):
             # target phase #
             ################
 
-            # Hang tight until velocity threshold is met
-            while self.opti.velocity() < P.post_velocity_threshold:  # type: ignore[attr-defined]
+            while True:
                 _ = ui_request()
 
-            self.trial_rt = self.evm.trial_time_ms - cue_on_at
-            self.trial_mt_max = self.evm.trial_time_ms + P.movement_time_limit  # type: ignore[attr-defined]
+                hand_velocity_current = self.opti.velocity(axis='all')
 
-            # draw target
-            self.draw_display(target=True)
+                if (
+                    hand_velocity_current > P.velocity_threshold  # type: ignore[attr-defined]
+                ):
+                    print(
+                        f'Velocity threshold met:\n\tVel: {hand_velocity_current:.1f} mm/s @ {self.evm.trial_time_ms} ms'
+                    )
+                    break
+
+            movement_start = self.evm.trial_time_ms
+            self.trial_rt = movement_start - cue_on_at
+            self.trial_movement_timeout = self.evm.trial_time_ms + P.movement_time_limit  # type: ignore[attr-defined]
+
+            # reveal target
+            self.draw_display(cue=True, target=True)
             ########################
 
             ##################
@@ -308,25 +281,31 @@ class symbolic_cues_2025(klibs.Experiment):
             ##################
 
             # Monitor reach kinematics until movement complete or timeout
-            while self.trial_mt is None and (
-                self.evm.trial_time_ms < self.trial_mt_max
-            ):
-                _ = ui_request()
+            while self.evm.trial_time_ms < self.trial_movement_timeout:
+                while self.trial_selected_item is None:
+                    _ = ui_request()
 
-                # Admoinish any hesitations
-                if self.opti.velocity() < P.post_velocity_threshold:  # type: ignore
-                    self.abort_trial(SLOW)
+                    hand_velocity_current = self.opti.velocity(axis='all')
 
-                which_bound = self.bounds.which_boundary(mouse_pos())
+                    # Admoinish any hesitations
+                    if hand_velocity_current < P.velocity_threshold:  # type: ignore[attr-defined]
+                        print(
+                            f'\nEarly stop detected!\nReported velocity: {hand_velocity_current:.1f} mm/s @ {self.evm.trial_time_ms} ms\n'
+                        )
+                        self.abort_trial(SLOW)
 
-                # If target touched, log selection & mt, break out of trial loop
-                if which_bound in [LEFT, RIGHT]:
-                    self.trial_selected = which_bound
-                    self.trial_mt = self.evm.trial_time_ms - self.trial_rt - cue_on_at  # type: ignore[operator]
+                    which_bound = self.bounds.which_boundary(mouse_pos())
+
+                    # If target touched, log selection & mt, break out of trial loop
+                    if which_bound in [LEFT, RIGHT]:
+                        self.trial_selected_item = which_bound
+                        self.trial_movement_time = (
+                            self.evm.trial_time_ms - movement_start
+                        )
 
         self.opti.stop_listening()
 
-        if self.trial_selected is None:
+        if self.trial_selected_item is None:
             self.abort_trial(TIMEOUT)
 
         return {
@@ -337,85 +316,50 @@ class symbolic_cues_2025(klibs.Experiment):
             'cue_laterality': self.cue_laterality,
             'cue_validity': self.cue_validity,
             'reaction_time': self.trial_rt if not None else 'NA',
-            'movement_time': self.trial_mt if not None else 'NA',
-            'touched_target': self.trial_selected == self.target_side
-            if self.trial_selected is not None
+            'movement_time': self.trial_movement_time if not None else 'NA',
+            'touched_target': self.trial_selected_item == self.target_side
+            if self.trial_selected_item is not None
             else 'NA',
         }
 
     def trial_clean_up(self):
+        clear()
         if self.opti.is_listening():
             self.opti.stop_listening()
-
-        if os.path.exists(self.opti.data_dir):
-            with open(self.opti.data_dir, 'r') as f:
-                data = f.read()
-
-            markup = (
-                f'# Participant ID: {P.p_id}',
-                f'# Block {P.block_number}',
-                f'# Trial {P.trial_number}',
-                f'# Cue reliability: {self.cue_reliability}',
-                f'# Cue laterality: {self.cue_laterality}',
-                f'# Cue validity: {self.cue_validity}',
-                f'# Target side: {self.target_side}',
-            )
-
-            with open(self.opti.data_dir, 'w') as f:
-                f.write('\n'.join(markup) + '\n' + data)
 
     def clean_up(self):
         if self.opti.is_listening():
             self.opti.stop_listening()
 
     def abort_trial(self, err=''):
-        msgs = {
-            EARLY: "Please don't release space until the cue appears",
-            SLOW: "Please don't pause or pull back until reach is completed",
-            TIMEOUT: 'Timed out! Please try to be quicker.',
-        }
         self.evm.stop_clock()
         if self.opti.is_listening():
             self.opti.stop_listening()
 
-        # move and retain optidata from aborted trials
-        # rename_as = (
-        #     f'OptiData/aborted/{P.p_id}/'
-        #     'Testing'
-        #     f'{"Practice" if P.practicing else "Testing"}'
-        #     f'_Block{P.block_number}_Trial{P.trial_number}.csv'
-        # )
-        #
-        # os.rename(self.opti.data_dir, rename_as)
-        #
-        # # log abort details
-        # abort_info = {
-        #     'practicing': P.practicing,
-        #     'block_num': P.block_number,
-        #     'trial_num': P.trial_number,
-        #     'cue_reliability': self.cue_validity,
-        #     'cue_laterality': self.cue_laterality,
-        #     'cue_validity': self.cue_validity,
-        #     'reaction_time': self.trial_rt if not None else 'NA',
-        #     'movement_time': self.trial_mt if not None else 'NA',
-        #     'touched_target': self.trial_selected == self.target_side
-        #     if self.trial_selected is not None
-        #     else 'NA',
-        #     'reason': err,
-        # }
-        #
-        # self.db.insert(data=abort_info, table='aborts')  # type: ignore
+        msgs = {
+            EARLY: 'Wait for go-signal before reaching!',
+            SLOW: 'Do not pause whilst reaching!',
+            TIMEOUT: 'Timed out! Please reach faster!',
+        }
 
-        if P.practicing:
-            self.practice_trials.append(
-                (self.cue_reliability, self.cue_laterality, self.cue_validity)
-            )
-            shuffle(self.practice_trials)
-        else:
-            self.trial_list.append(
-                (self.cue_reliability, self.cue_laterality, self.cue_validity)
-            )
-            shuffle(self.trial_list)
+        # log abort details
+        abort_info = {
+            'practicing': P.practicing,
+            'block_num': P.block_number,
+            'trial_num': P.trial_number,
+            'cue_reliability': self.cue_validity,
+            'cue_laterality': self.cue_laterality,
+            'cue_validity': self.cue_validity,
+            'reaction_time': self.trial_rt if not None else 'NA',
+            'movement_time': self.trial_movement_time if not None else 'NA',
+            'touched_target': self.trial_selected_item == self.target_side
+            if self.trial_selected_item is not None
+            else 'NA',
+            'reason': err,
+            'recycled': err == EARLY,  # only recycle early-starts
+        }
+
+        self.db.insert(data=abort_info, table='aborts')  # type: ignore
 
         fill()
         message(msgs[err], location=P.screen_c, registration=5, blit_txt=True)
@@ -423,7 +367,16 @@ class symbolic_cues_2025(klibs.Experiment):
 
         smart_sleep(1000)
 
-        raise TrialException(err)
+        # if pre-go-signal, reshuffle trial into deck
+        if err == EARLY:
+            os.remove(self.opti_path)
+
+            self.trial_list.append(
+                (self.cue_reliability, self.cue_laterality, self.cue_validity)
+            )
+            shuffle(self.trial_list)
+
+            raise TrialException(err)
 
     def draw_display(
         self,
@@ -434,43 +387,41 @@ class symbolic_cues_2025(klibs.Experiment):
     ) -> None:
         fill()
 
-        if any([fix, cue, target]):
-            blit(self.placeholder, location=self.locs[LEFT], registration=5)
-            blit(self.placeholder, location=self.locs[RIGHT], registration=5)
-            blit(self.placeholder, location=self.locs[START], registration=5)
+        blit(self.placeholder, location=self.locs[LEFT], registration=5)
+        blit(self.placeholder, location=self.locs[RIGHT], registration=5)
+        blit(self.placeholder, location=self.locs[START], registration=5)
 
-            if fix:
-                blit(self.fix, location=self.locs[CENTER], registration=5)
+        if msg:
+            message(msg, location=P.screen_c, registration=5, blit_txt=True)
 
-            if cue:
-                blit(
-                    self.cues[self.cue_reliability][self.cue_laterality],
-                    location=self.locs[CENTER],
-                    registration=5,
-                )
+        if fix:
+            blit(self.fix, location=self.locs[CENTER], registration=5)
 
-            if target:
-                blit(
-                    self.target,
-                    location=self.locs[self.target_side],
-                    registration=5,
-                )
+        if cue:
+            blit(
+                self.cues[self.cue_reliability][self.cue_laterality],
+                location=self.locs[CENTER],
+                registration=5,
+            )
 
-        else:
-            if msg:
-                message(
-                    msg,
-                    location=[0, 0],
-                    registration=7,
-                    blit_txt=True,
-                )
+        if target:
+            blit(
+                self.target,
+                location=self.locs[self.target_side],
+                registration=5,
+            )
 
         flip()
 
-        if msg:
-            smart_sleep(1000)
+    def euclidean(self, p0: np.ndarray, p1: np.ndarray) -> int:
 
-    def euclidean_distance(
-        self, p0: tuple[int, int, int], p1: tuple[int, int, int]
-    ) -> int:
-        return trunc(sqrt(sum((a - b) ** 2 for a, b in zip(p0, p1))))
+        """
+        Calculate the Euclidean distance between two points.
+        Args:
+            p0 (np.ndarray): Tuple of xyz coordinates denoting starting point.
+            p1 (np.ndarray): Tuple of xyz coordinates denoting ending point.
+        Returns:
+            int: The Euclidean distance between the two points, truncated to an integer.
+        """
+
+        return int(np.linalg.norm(p0 - p1))

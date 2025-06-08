@@ -6,7 +6,7 @@
 collect_demographics = True
 manual_demographics_collection = False
 manual_trial_generation = False
-run_practice_blocks = True
+run_practice_blocks = False
 multi_user = False
 # in centimeters, 57cm = 1 deg of visual angle per cm of screen
 view_distance = 57
@@ -75,10 +75,10 @@ marker_count = 10
 window_size = 3  # num frames considered when calculating velocity
 rescale_by = 1000  # rescale values from m to mm
 primary_axis = 'z'  # axis to consider for movement (for/back)
-pre_velocity_threshold = 30  # req vel (mm / s) to be considered in-flight
-post_velocity_threshold = 10  # req vel (mm / s) to be considered in-flight
 movement_time_limit = 450   # movetime bound (ms) before trial abort
-early_start_boundary = 2  # cm
+early_start_boundary = 30  # mm
+velocity_threshold = 20   # mm/s
+
 # Cue/exp params #
 cue_types = {  # Proportion, by cue type, of in/validly cued trials
     'HIGH': {'LEFT': [0.80, 0.20], 'RIGHT': [0.20, 0.80]},
