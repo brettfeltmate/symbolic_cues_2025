@@ -76,8 +76,8 @@ window_size = 3  # num frames considered when calculating velocity
 rescale_by = 1000  # rescale values from m to mm
 primary_axis = 'z'  # axis to consider for movement (for/back)
 movement_time_limit = 450   # movetime bound (ms) before trial abort
-early_start_boundary = 30  # mm
-velocity_threshold = 20   # mm/s
+early_start_boundary = 100  # mm
+velocity_threshold = 100   # mm/s
 
 # Cue/exp params #
 cue_types = {  # Proportion, by cue type, of in/validly cued trials
@@ -107,7 +107,7 @@ for reliability in cue_types.keys():
 # visual params #
 v_offset = 40
 h_offset = 10
-circ_size = 3
+circ_size = 6
 target_size = circ_size * 0.95
 fix_size = 4
 line_width = 0.2

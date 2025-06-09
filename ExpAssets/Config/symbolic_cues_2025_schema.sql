@@ -8,8 +8,8 @@ created text not null
 ) ;
 
 CREATE TABLE trials (
-id integer primary autoincrement not null,
-participant_id integer not null references participants (id),
+id integer primary key autoincrement not null,
+participant_id integer not null references participants(id),
 practicing text not null,
 block_num integer not null,
 trial_num integer not null,
@@ -23,7 +23,7 @@ touched_target text not null
 
 CREATE TABLE aborts (
 id integer primary key autoincrement not null,
-participant_id integer not null references participants (id),
+participant_id integer not null references participants(id),
 practicing text not null,
 block_num integer not null,
 trial_num integer not null,
