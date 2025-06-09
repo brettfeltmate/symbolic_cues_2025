@@ -20,18 +20,17 @@ from klibs.KLUserInterface import any_key, mouse_pos, ui_request, hide_cursor
 from klibs.KLUtilities import smart_sleep
 from Optitracker.optitracker.OptiTracker import Optitracker  # type: ignore[import]
 
-# from get_key_state import get_key_state  # type: ignore[import]
-
 BLACK = (0, 0, 0, 255)
+ORANGE = (255, 165, 0, 255)
 HIGH = 'HIGH'
 LOW = 'LOW'
 LEFT = 'LEFT'
 RIGHT = 'RIGHT'
 START = 'START'
 CENTER = 'CENTER'
-TIMEOUT = 'timed_out'
-EARLY = 'early_movement'
-SLOW = 'stopped_early'
+TRIAL_TIMEOUT = 'trial_timeout'
+EARLY_START = 'early_start'
+MOVEMENT_TIMEOUT = 'movement_timeout'
 
 
 class symbolic_cues_2025(klibs.Experiment):
@@ -120,6 +119,13 @@ class symbolic_cues_2025(klibs.Experiment):
             ]
         )
 
+        if P.development_mode:
+            self.cursor = kld.Annulus(
+                diameter=P.circ_size * self.px_cm,  # type: ignore[attr-defined]
+                thickness=P.line_width * self.px_cm,  # type: ignore[attr-defined]
+                fill=ORANGE,
+            )
+
         # randomize image names before associating with cue types
         cue_image_names = ['bowtie', 'laos', 'legoman', 'barbell']
         shuffle(cue_image_names)
@@ -198,12 +204,19 @@ class symbolic_cues_2025(klibs.Experiment):
         instrux = (
             'Tap the start (nearest) circle to begin the trial.\nThen keep still until the go-signal appears.',
         )
+        # Instruct user on how to start
+        instrux = 'Tap the start (nearest) circle to begin the trial.\nThen keep still until the go-signal appears.'
+        if P.development_mode:
+            instrux += '\n[DEBUG] Waiting for start.'
 
         self.draw_display(msg=instrux[0])
 
         # trial started by touching start position
         while not self.bounds.within_boundary(START, mouse_pos()):
             _ = ui_request()
+            # repeatedly draw display (w/cursor) when debugging
+            if P.development_mode:
+                self.draw_display(msg=instrux[0])
 
         # plug into NatNet stream
         self.opti.start_listening()
@@ -222,91 +235,118 @@ class symbolic_cues_2025(klibs.Experiment):
 
         hand_pos_initial = self.opti.position()
 
-        while self.evm.before('trial_timeout'):
+        #############
+        # cue phase #
+        #############
 
-            #############
-            # cue phase #
-            #############
+        while self.evm.before('cue_onset'):
+            if P.development_mode:
+                # draw display with cursor for debugging
+                self.draw_display(fix=True, msg='[DEBUG] Waiting for cue...')
 
-            while self.evm.before('cue_onset'):
-                _ = ui_request()
+            if self.evm.after('trial_timeout'):
+                self.abort_trial(TRIAL_TIMEOUT)
 
-                hand_velocity_current = self.opti.velocity(axis='all')
+            _ = ui_request()
 
-                if hand_velocity_current > P.velocity_threshold:  # type: ignore[attr-defined]
-                    print(
-                        f'\nEarly movement detected!\nReported velocity: {hand_velocity_current:.1f} mm/s\n'
-                    )
-                    self.abort_trial(EARLY)
+            hand_velocity_current = self.opti.velocity(axis='all')
 
-                hand_pos_current = self.opti.position()
-                wavered = self.euclidean(hand_pos_initial, hand_pos_current)
-                if wavered > P.early_start_boundary:  # type: ignore[attr-defined]
-                    print(
-                        f'\nEarly movement detected!\nReported distance from initial touch-point: {wavered} mm'
-                    )
-                    self.abort_trial(EARLY)
+            if hand_velocity_current > P.velocity_threshold:  # type: ignore[attr-defined]
+                print(
+                    f'\nEarly movement detected!\nReported velocity: {hand_velocity_current:.1f} mm/s\n'
+                )
+                self.abort_trial(EARLY_START)
 
-            self.draw_display(cue=True)
-            cue_on_at = self.evm.trial_time_ms
-            ########################
+            hand_pos_current = self.opti.position()
+            wavered = self.euclidean(hand_pos_initial, hand_pos_current)
+            if wavered > P.early_start_boundary:  # type: ignore[attr-defined]
+                print(
+                    f'\nEarly movement detected!\nReported distance from initial touch-point: {wavered} mm'
+                )
+                self.abort_trial(EARLY_START)
 
-            ################
-            # target phase #
-            ################
+        self.draw_display(cue=True)
+        cue_on_at = self.evm.trial_time_ms
+        ########################
 
-            while True:
-                _ = ui_request()
+        ################
+        # target phase #
+        ################
 
-                hand_velocity_current = self.opti.velocity(axis='all')
+        velocity_threshold_met = False
 
-                if (
-                    hand_velocity_current > P.velocity_threshold  # type: ignore[attr-defined]
-                ):
-                    print(
-                        f'Velocity threshold met:\n\tVel: {hand_velocity_current:.1f} mm/s @ {self.evm.trial_time_ms} ms'
-                    )
-                    break
+        while not velocity_threshold_met:
+            if self.evm.after('trial_timeout'):
+                self.abort_trial(TRIAL_TIMEOUT)
 
-            movement_start = self.evm.trial_time_ms
-            self.trial_rt = movement_start - cue_on_at
-            self.trial_movement_timeout = self.evm.trial_time_ms + P.movement_time_limit  # type: ignore[attr-defined]
+            _ = ui_request()
 
-            # reveal target
-            self.draw_display(cue=True, target=True)
-            ########################
+            hand_velocity_current = self.opti.velocity(axis='all')
 
-            ##################
-            # response phase #
-            ##################
+            if P.development_mode:
+                # draw display with cursor for debugging
+                self.draw_display(
+                    cue=True,
+                    msg=f'[DEBUG] Waiting for velocity threshold.\nCurrent reported velocity: {hand_velocity_current:.1f} mm/s',
+                )
 
-            # Monitor reach kinematics until movement complete or timeout
-            while self.evm.trial_time_ms < self.trial_movement_timeout:
-                while self.trial_selected_item is None:
-                    _ = ui_request()
+            if (
+                hand_velocity_current > P.velocity_threshold  # type: ignore[attr-defined]
+            ):
+                print(
+                    f'Velocity threshold met:\n\tVel: {hand_velocity_current:.1f} mm/s @ {self.evm.trial_time_ms} ms'
+                )
+                velocity_threshold_met = True
+                mouse_pos(position=[0, 0])  # reset mouse position
 
-                    hand_velocity_current = self.opti.velocity(axis='all')
+        movement_start = self.evm.trial_time_ms
+        self.trial_rt = movement_start - cue_on_at
+        self.trial_movement_timeout = self.evm.trial_time_ms + P.movement_time_limit  # type: ignore[attr-defined]
 
-                    # Admoinish any hesitations
-                    if hand_velocity_current < P.velocity_threshold:  # type: ignore[attr-defined]
-                        print(
-                            f'\nEarly stop detected!\nReported velocity: {hand_velocity_current:.1f} mm/s @ {self.evm.trial_time_ms} ms\n'
-                        )
-                        self.abort_trial(SLOW)
+        # reveal target
+        self.draw_display(cue=True, target=True)
+        ########################
 
-                    which_bound = self.bounds.which_boundary(mouse_pos())
+        ##################
+        # response phase #
+        ##################
 
-                    # If target touched, log selection & mt, break out of trial loop
-                    if which_bound in [LEFT, RIGHT]:
-                        self.trial_selected_item = which_bound
-                        self.trial_movement_time = (
-                            self.evm.trial_time_ms - movement_start
-                        )
+        # Monitor reach kinematics until movement complete or timeout
+        while (self.evm.trial_time_ms < self.trial_movement_timeout) and (
+            not self.trial_selected_item  # type: ignore[attr-defined]
+        ):
+            if self.evm.after('trial_timeout'):
+                self.abort_trial(TRIAL_TIMEOUT)
+
+            _ = ui_request()
+
+            hand_velocity_current = self.opti.velocity(axis='all')
+
+            if P.development_mode:
+                # draw display with cursor for debugging
+                self.draw_display(
+                    cue=True,
+                    target=True,
+                    msg=f'[DEBUG] Waiting for target touch.\nCurrent reported velocity: {hand_velocity_current:.1f} mm/s',
+                )
+
+            # Admoinish any hesitations
+            if hand_velocity_current < P.velocity_threshold:  # type: ignore[attr-defined]
+                print(
+                    f'\nEarly stop detected!\nReported velocity: {hand_velocity_current:.1f} mm/s @ {self.evm.trial_time_ms} ms\n'
+                )
+                self.abort_trial(MOVEMENT_TIMEOUT)
+
+            which_bound = self.bounds.which_boundary(mouse_pos())
+
+            # If target touched, log selection & mt, break out of trial loop
+            if which_bound in [LEFT, RIGHT]:
+                self.trial_selected_item = which_bound
+                self.trial_movement_time = (
+                    self.evm.trial_time_ms - movement_start
+                )
 
         self.opti.stop_listening()
-
-        if self.trial_selected_item is None:
-            self.abort_trial(TIMEOUT)
 
         return {
             'practicing': P.practicing,
@@ -337,9 +377,9 @@ class symbolic_cues_2025(klibs.Experiment):
             self.opti.stop_listening()
 
         msgs = {
-            EARLY: 'Wait for go-signal before reaching!',
-            SLOW: 'Do not pause whilst reaching!',
-            TIMEOUT: 'Timed out! Please reach faster!',
+            EARLY_START: 'Wait for go-signal before reaching!',
+            MOVEMENT_TIMEOUT: 'Do not pause whilst reaching!',
+            TRIAL_TIMEOUT: 'Timed out! Please move faster!',
         }
 
         # log abort details
@@ -356,7 +396,7 @@ class symbolic_cues_2025(klibs.Experiment):
             if self.trial_selected_item is not None
             else 'NA',
             'reason': err,
-            'recycled': err == EARLY,  # only recycle early-starts
+            'recycled': err == EARLY_START,  # only recycle early-starts
         }
 
         self.db.insert(data=abort_info, table='aborts')  # type: ignore
@@ -368,7 +408,7 @@ class symbolic_cues_2025(klibs.Experiment):
         smart_sleep(1000)
 
         # if pre-go-signal, reshuffle trial into deck
-        if err == EARLY:
+        if err == EARLY_START:
             os.remove(self.opti_path)
 
             self.trial_list.append(
@@ -410,6 +450,10 @@ class symbolic_cues_2025(klibs.Experiment):
                 location=self.locs[self.target_side],
                 registration=5,
             )
+
+        if P.development_mode:
+            # draw cursor for debugging
+            blit(self.cursor, location=mouse_pos(), registration=5)
 
         flip()
 
