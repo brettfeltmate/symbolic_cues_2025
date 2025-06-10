@@ -72,11 +72,10 @@ append_hostname = False
 
 # Opti/movement params #
 marker_count = 10
-window_size = 3  # num frames considered when calculating velocity
+window_size = 5  # num frames considered when calculating velocity
 rescale_by = 1000  # rescale values from m to mm
 primary_axis = 'z'  # axis to consider for movement (for/back)
 movement_time_limit = 450   # movetime bound (ms) before trial abort
-early_start_boundary = 100  # mm
 velocity_threshold = 100   # mm/s
 
 # Cue/exp params #
