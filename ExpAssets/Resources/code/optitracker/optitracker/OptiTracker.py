@@ -97,7 +97,7 @@ class Optitracker(object):
             init_natnet = False
             self.__natnet = None
 
-            if display_ppi <= 0:
+            if display_ppi > 0:
                 self.__display_ppi = display_ppi
             else:
                 raise ValueError(

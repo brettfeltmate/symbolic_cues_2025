@@ -19,7 +19,7 @@ from klibs.KLUtilities import smart_sleep
 
 from klibs.KLExceptions import TrialException
 
-from Optitracker.optitracker.OptiTracker import Optitracker  # type: ignore
+from optitracker.optitracker.OptiTracker import Optitracker  # type: ignore
 
 BLACK = (0, 0, 0, 255)
 ORANGE = (255, 165, 0, 255)
@@ -51,7 +51,7 @@ class symbolic_cues_2025(klibs.Experiment):
             rescale_by=P.rescale_by,  # type: ignore
             primary_axis=P.primary_axis,  # type: ignore
             use_mouse=P.condition == 'mouse',  # type: ignore
-            display_ppi=P.ppi,  # type: ignore
+            display_ppi=int(P.ppi),  # type: ignore
         )
 
         if not os.path.exists('OptiData'):
@@ -67,7 +67,7 @@ class symbolic_cues_2025(klibs.Experiment):
         os.mkdir(self.opti_path)
 
         # get base unit for sizings & positionings
-        self.px_cm = P.ppi / 2.54
+        self.px_cm = P.ppi // 2.54
 
         # spawn basic stimuli
         self.placeholder = kld.Annulus(
@@ -216,7 +216,7 @@ class symbolic_cues_2025(klibs.Experiment):
         self.opti.start_listening()
 
         # give opti a 10 frame lead
-        smart_sleep(1.0 / 120 * 10)
+        smart_sleep(1e3 / 120 * 10)
 
         # Ensure opti is listening
         if not self.opti.is_listening():
@@ -241,13 +241,19 @@ class symbolic_cues_2025(klibs.Experiment):
 
             _ = ui_request()
 
-            velocity = self.opti.velocity(axis='all')
-            cursor = mouse_pos()
-            t_now = self.evm.trial_time_ms
-
+            # draw display for current phase
             self.draw_display(phase=trial_phase)
 
-            # Abort if user moves prior to go-signal
+            # state variables
+            cursor = mouse_pos()
+            t_now = self.evm.trial_time_ms
+            velocity = self.opti.velocity(axis='all')
+
+            #
+            # Determine what should happen on next redraw
+            #
+
+            # Prior to go-signal: abort if moving
             if trial_phase == 'pre_cue':
                 if velocity >= P.velocity_threshold:  # type: ignore
                     bad_behaviour = EARLY_START
@@ -306,6 +312,7 @@ class symbolic_cues_2025(klibs.Experiment):
             smart_sleep(1000)
 
             abort_info = {
+                'participant_id': P.p_id,
                 'practicing': P.practicing,
                 'block_num': P.block_number,
                 'trial_num': P.trial_number,
