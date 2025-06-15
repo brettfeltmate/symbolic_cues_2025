@@ -29,7 +29,6 @@ LEFT = 'LEFT'
 RIGHT = 'RIGHT'
 START = 'START'
 CENTER = 'CENTER'
-TRIAL_TIMEOUT = 'trial_timeout'
 EARLY_START = 'early_start'
 EARLY_STOP = 'early_stop'
 MOVEMENT_TIMEOUT = 'movement_timeout'
@@ -203,8 +202,6 @@ class symbolic_cues_2025(klibs.Experiment):
 
         # Instruct user on how to start
         instrux = 'Tap the start (nearest) circle to begin the trial.\nThen keep still until the go-signal appears.'
-        if P.development_mode:
-            instrux += '\n[DEBUG] Waiting for start.'
 
         self.draw_display(phase='pre_trial', msg=instrux)
 
@@ -243,83 +240,58 @@ class symbolic_cues_2025(klibs.Experiment):
 
             # draw display for current phase
             self.draw_display(phase=trial_phase)
-            print(f"DEBUGPRINT[10]: experiment.py:245: trial_phase={trial_phase}")
 
             # state variables
             cursor = mouse_pos()
-            print(f"DEBUGPRINT[12]: experiment.py:249: cursor={cursor}")
             t_now = self.evm.trial_time_ms
-            print(f"DEBUGPRINT[13]: experiment.py:251: t_now={t_now}")
             velocity = self.opti.velocity(axis='all')
-            print(f"DEBUGPRINT[14]: experiment.py:253: velocity={velocity}")
 
+            if P.development_mode:
+                print(f"\n\t   Trial: {P.trial_number}")
+                print(f"\n\t   Phase: {trial_phase}")
+                print(f"\n\tPosition: {cursor}")
+                print(f"\n\t    Time: {int(t_now)} ms")
+                print(f"\n\tVelocity: {int(velocity)} px/s")
+                print(f"\n\t   Error: {bad_behaviour}")
             #
             # Determine what should happen on next redraw
             #
 
             # Prior to go-signal: abort if moving
             if trial_phase == 'pre_cue':
-                print("DEBUGPRINT[19]: experiment.py:261 (after if trial_phase == pre_cue:)")
                 if velocity >= P.velocity_threshold:  # type: ignore
-                    print("DEBUGPRINT[16]: experiment.py:262 (after if velocity >= P.velocity_threshold:  # …)")
                     bad_behaviour = EARLY_START
                 else:
                     if t_now >= P.cue_onset:  # type: ignore
-                        print("DEBUGPRINT[18]: experiment.py:266 (after if t_now >= P.cue_onset:  # type: ignore)")
                         trial_phase = 'pre_target'
-                        print(f"DEBUGPRINT[37]: experiment.py:269: trial_phase={trial_phase}")
                         cue_on_at = t_now
-                        print(f"DEBUGPRINT[38]: experiment.py:271: cue_on_at={cue_on_at}")
 
             # Following go-signal, reveal target on movement start
             elif trial_phase == 'pre_target':
-                print("DEBUGPRINT[20]: experiment.py:273 (after elif trial_phase == pre_target:)")
                 if velocity >= P.velocity_threshold:  # type: ignore
-                    print("DEBUGPRINT[22]: experiment.py:275 (after if velocity >= P.velocity_threshold:  # …)")
                     trial_phase = 'responding'
                     # log start time
                     movement_start = t_now
-                    print(f"DEBUGPRINT[23]: experiment.py:279: movement_start={movement_start}")
                     reaction_time = movement_start - cue_on_at  # type: ignore
-                    print(f"DEBUGPRINT[24]: experiment.py:281: reaction_time={reaction_time}")
                     # calculate timelimit
                     trial_time_limit = movement_start + P.movement_time_limit  # type: ignore
-                    print(f"DEBUGPRINT[25]: experiment.py:284: trial_time_limit={trial_time_limit}")
 
             # Abort if pauses made during reaching, otherwise log which/when item touched
             elif trial_phase == 'responding':
-                print(f"DEBUGPRINT[6]: experiment.py:257: trial_phase={trial_phase}")
 
                 if velocity <= P.velocity_threshold:  # type: ignore
-                    print("DEBUGPRINT[26]: experiment.py:291 (after if velocity <= P.velocity_threshold:  # …)")
                     bad_behaviour = EARLY_STOP
 
                 if t_now >= trial_time_limit:  # type: ignore
-                    print(f"DEBUGPRINT[6]: experiment.py:257: trial_phase={trial_phase}")
-                    bad_behaviour = TRIAL_TIMEOUT
+                    bad_behaviour = MOVEMENT_TIMEOUT
 
                 if not bad_behaviour:
-                    print(f"DEBUGPRINT[6]: experiment.py:257: trial_phase={trial_phase}")
                     which_bound = self.bounds.which_boundary(cursor)
-                    print(f"DEBUGPRINT[27]: experiment.py:301: which_bound={which_bound}")
                     if which_bound in [LEFT, RIGHT]:
                         item_touched = which_bound
-                        print(f"DEBUGPRINT[28]: experiment.py:304: item_touched={item_touched}")
                         movement_time = t_now - movement_start  # type: ignore
-                        print(f"DEBUGPRINT[29]: experiment.py:306: movement_time={movement_time}")
-
-            if P.development_mode:
-                print('\n\n')
-                print('-----')
-                print(
-                    f'Phase: {trial_phase}, Time: {int(t_now)}, Velocity: {int(velocity)}, Err: {bad_behaviour}'
-                )
-                print('-----')
-                print('\n\n')
 
         if bad_behaviour:
-            print("DEBUGPRINT[30]: experiment.py:318 (after if bad_behaviour:)")
-            print(f"DEBUGPRINT[31]: experiment.py:318: bad_behaviour={bad_behaviour}")
 
             fill()
 
@@ -369,7 +341,6 @@ class symbolic_cues_2025(klibs.Experiment):
 
                 raise TrialException(bad_behaviour)
 
-        print("DEBUGPRINT[32]: experiment.py:370 (before return )")
         return {
             'practicing': P.practicing,
             'block_num': P.block_number,
@@ -401,15 +372,12 @@ class symbolic_cues_2025(klibs.Experiment):
         blit(self.placeholder, location=self.locs[START], registration=5)
 
         if msg:
-            print("DEBUGPRINT[33]: experiment.py:401 (after if msg:)")
             message(msg, location=P.screen_c, registration=5, blit_txt=True)
 
         if phase == 'pre_cue':
-            print("DEBUGPRINT[34]: experiment.py:405 (after if phase == pre_cue:)")
             blit(self.fix, location=self.locs[CENTER], registration=5)
 
         elif phase == 'pre_target':
-            print("DEBUGPRINT[35]: experiment.py:409 (after elif phase == pre_target:)")
             blit(self.fix, location=self.locs[CENTER], registration=5)
             blit(
                 self.cue[self.cue_reliability][self.cue_laterality],
@@ -418,7 +386,6 @@ class symbolic_cues_2025(klibs.Experiment):
             )
 
         if phase == 'responding':
-            print("DEBUGPRINT[36]: experiment.py:418 (after if phase == responding:)")
             blit(
                 self.cue[self.cue_reliability][self.cue_laterality],
                 location=self.locs[CENTER],
