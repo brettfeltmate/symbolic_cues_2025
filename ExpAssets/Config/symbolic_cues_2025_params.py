@@ -41,9 +41,6 @@ saccadic_motion_threshold = 0.15
 # Experiment Structure
 #########################################
 multi_session_project = False
-blocks_per_experiment = 1
-trials_per_cue = 40
-trials_per_block = trials_per_cue * 4
 conditions = ['opti', 'mouse']
 default_condition = 'opti'
 trials_per_practice_block = 8
@@ -77,13 +74,21 @@ rescale_by = 1000  # rescale values from m to mm
 primary_axis = 'z'  # axis to consider for movement (for/back)
 movement_time_limit = 450   # movetime bound (ms) before trial abort
 velocity_threshold = 100   # mm/s
+frequent = 0.8
+med_high = 0.525
+med_low = 0.475
+rare = 0.2
 
 # Cue/exp params #
 cue_types = {  # Proportion, by cue type, of in/validly cued trials
-    'HIGH': {'LEFT': [0.80, 0.20], 'RIGHT': [0.20, 0.80]},
-    'LOW': {'LEFT': [0.525, 0.475], 'RIGHT': [0.475, 0.525]},
+    'HIGH': {'LEFT': [frequent, rare], 'RIGHT': [rare, frequent]},
+    'LOW': {'LEFT': [med_high, med_low], 'RIGHT': [med_low, med_high]},
 }
 
+blocks_per_experiment = 4
+trials_per_cue = 40
+cue_reps_block = 4
+trials_per_block = trials_per_cue * cue_reps_block
 # generate trial sequence, with 40 trials per cue
 # for each cue, divy up trials such that cues' intended
 # probability matches their actual probability (of cuing target)
