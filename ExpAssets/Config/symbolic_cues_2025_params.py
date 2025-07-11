@@ -41,12 +41,12 @@ saccadic_motion_threshold = 0.15
 # Experiment Structure
 #########################################
 multi_session_project = False
-blocks_per_experiment = 1
+blocks_per_experiment = 4
 trials_per_cue = 40
 trials_per_block = trials_per_cue * 4
 conditions = ['opti', 'mouse']
 default_condition = 'opti'
-trials_per_practice_block = 8
+trials_per_practice_block = 12
 
 #########################################
 # Development Mode Settings
@@ -75,7 +75,7 @@ marker_count = 10
 window_size = 5  # num frames considered when calculating velocity
 rescale_by = 1000  # rescale values from m to mm
 primary_axis = 'z'  # axis to consider for movement (for/back)
-movement_time_limit = 450   # movetime bound (ms) before trial abort
+movement_time_limit = 500   # movetime bound (ms) before trial abort
 velocity_threshold = 100   # mm/s
 
 # Cue/exp params #
@@ -104,7 +104,7 @@ for reliability in cue_types.keys():
             trial_list.append((reliability, laterality, False))
 
 # visual params #
-v_offset = 40
+v_offset = 20
 h_offset = 10
 circ_size = 6
 target_size = circ_size * 0.95
