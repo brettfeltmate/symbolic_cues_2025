@@ -41,9 +41,9 @@ saccadic_motion_threshold = 0.15
 # Experiment Structure
 #########################################
 multi_session_project = False
-blocks_per_experiment = 4
-trials_per_cue = 40
-trials_per_block = trials_per_cue * 4
+# blocks_per_experiment = 4
+# trials_per_cue = 40
+# trials_per_block = trials_per_cue * 4
 conditions = ['opti', 'mouse']
 default_condition = 'opti'
 trials_per_practice_block = 12
@@ -112,7 +112,7 @@ for reliability in cue_types.keys():
             trial_list.append((reliability, laterality, False))
 
 # visual params #
-v_offset = 20
+v_offset = 40
 h_offset = 10
 circ_size = 6
 target_size = circ_size * 0.95
@@ -123,3 +123,4 @@ image_width = 4  # cms
 # timing params #
 cue_onset = 500
 trial_time_max = 1500
+# 

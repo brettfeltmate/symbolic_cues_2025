@@ -204,6 +204,9 @@ class symbolic_cues_2025(klibs.Experiment):
         self.trial_path = self.opti_path
         self.trial_path += f'_Trial_{P.trial_number}_{self.cue_reliability}_{self.cue_laterality}_{self.cue_validity}.csv'
 
+        if P.practicing:
+            self.trial_path += "_PRACTICE"
+
         self.opti.data_dir = self.trial_path
 
         self.draw_display(phase='pre_trial')
