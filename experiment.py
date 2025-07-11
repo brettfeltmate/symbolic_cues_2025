@@ -5,7 +5,7 @@ __author__ = 'Brett Feltmate'
 
 import os
 from copy import deepcopy
-from random import shuffle
+from random import shuffle, sample
 
 import klibs
 from klibs import P
@@ -155,6 +155,9 @@ class symbolic_cues_2025(klibs.Experiment):
         self.trial_list = deepcopy(P.trial_list)  # type: ignore
 
         shuffle(self.trial_list)
+        
+        if P.run_practice_blocks:
+            self.practice_trial_list = sample(self.trial_list, P.practice_trials_per_block)  # type: ignore[attr-defined]
 
     def block(self):
         self.opti_path += f'/Block_{P.block_number}'
@@ -173,6 +176,9 @@ class symbolic_cues_2025(klibs.Experiment):
             'When you are ready, press any key to start the experiment.'
         )
 
+        if P.practicing:
+            instrux += '\n\n(PRACTICE ROUND)'
+
         fill()
         message(instrux, location=P.screen_c, registration=5, blit_txt=True)
         flip()
@@ -187,7 +193,7 @@ class symbolic_cues_2025(klibs.Experiment):
             self.cue_reliability,
             self.cue_laterality,
             self.cue_validity,
-        ) = self.trial_list.pop()
+        ) = self.trial_list.pop() if not P.practicing else self.practice_trial_list.pop()
 
         # set target pos as function of cue validity
         if self.cue_laterality == LEFT:
@@ -200,10 +206,7 @@ class symbolic_cues_2025(klibs.Experiment):
 
         self.opti.data_dir = self.trial_path
 
-        # Instruct user on how to start
-        instrux = 'Tap the start (nearest) circle to begin the trial.\nThen keep still until the go-signal appears.'
-
-        self.draw_display(phase='pre_trial', msg=instrux)
+        self.draw_display(phase='pre_trial')
 
         # trial started by touching start position
         while not self.bounds.within_boundary(START, mouse_pos()):
