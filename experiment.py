@@ -19,7 +19,7 @@ from klibs.KLUtilities import smart_sleep, pump
 
 from klibs.KLExceptions import TrialException
 
-from optitracker.optitracker.OptiTracker import Optitracker  # type: ignore
+from Optitracker.optitracker.OptiTracker import Optitracker  # type: ignore
 
 BLACK = (0, 0, 0, 255)
 ORANGE = (255, 165, 0, 255)
@@ -206,12 +206,14 @@ class symbolic_cues_2025(klibs.Experiment):
 
         self.opti.data_dir = self.trial_path
 
-        self.draw_display(phase='pre_trial')
+        self.draw_display(phase='pre_cue')
 
         # trial started by touching start position
         at_start = False
         _ = pump()
         while not at_start:
+            if not self.opti.is_listening():
+                self.opti.start_listening()
             q = pump()
             ui_request(queue = q)
             lift_offs = get_clicks(released = True)
@@ -221,10 +223,10 @@ class symbolic_cues_2025(klibs.Experiment):
                     at_start = True
 
         # plug into NatNet stream
-        self.opti.start_listening()
+        # self.opti.start_listening()
 
         # give opti a 10 frame lead
-        smart_sleep(1e3 / 120 * 10)
+        # smart_sleep(1e3 / 120 * 10)
 
         # Ensure opti is listening
         if not self.opti.is_listening():
@@ -397,8 +399,8 @@ class symbolic_cues_2025(klibs.Experiment):
         blit(self.placeholder, location=self.locs[RIGHT], registration=5)
         blit(self.placeholder, location=self.locs[START], registration=5)
 
-        if msg:
-            message(msg, location=P.screen_c, registration=5, blit_txt=True)
+        # if msg:
+        #     message(msg, location=P.screen_c, registration=5, blit_txt=True)
 
         if phase == 'pre_cue':
             blit(self.fix, location=self.locs[CENTER], registration=5)

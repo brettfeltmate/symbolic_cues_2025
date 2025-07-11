@@ -104,7 +104,7 @@ for reliability in cue_types.keys():
             trial_list.append((reliability, laterality, False))
 
 # visual params #
-v_offset = 20
+v_offset = 40
 h_offset = 10
 circ_size = 6
 target_size = circ_size * 0.95
