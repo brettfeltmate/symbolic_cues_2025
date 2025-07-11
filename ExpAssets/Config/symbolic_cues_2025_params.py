@@ -41,12 +41,9 @@ saccadic_motion_threshold = 0.15
 # Experiment Structure
 #########################################
 multi_session_project = False
-<<<<<<< HEAD
-=======
 blocks_per_experiment = 4
 trials_per_cue = 40
 trials_per_block = trials_per_cue * 4
->>>>>>> 83f8aa0a6016c0a2f4942a60f6ecebfa1fbdf836
 conditions = ['opti', 'mouse']
 default_condition = 'opti'
 trials_per_practice_block = 12

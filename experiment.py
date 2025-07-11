@@ -19,7 +19,7 @@ from klibs.KLUtilities import smart_sleep
 
 from klibs.KLExceptions import TrialException
 
-from optitracker.optitracker.OptiTracker import Optitracker  # type: ignore
+from Optitracker.optitracker.OptiTracker import Optitracker  # type: ignore
 
 BLACK = (0, 0, 0, 255)
 ORANGE = (255, 165, 0, 255)
