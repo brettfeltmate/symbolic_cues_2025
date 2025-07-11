@@ -14,8 +14,8 @@ from klibs.KLCommunication import message
 from klibs.KLGraphics import KLDraw as kld
 from klibs.KLGraphics import KLNumpySurface as kln
 from klibs.KLGraphics import blit, fill, flip, clear
-from klibs.KLUserInterface import any_key, mouse_pos, ui_request
-from klibs.KLUtilities import smart_sleep
+from klibs.KLUserInterface import any_key, mouse_pos, ui_request, get_clicks
+from klibs.KLUtilities import smart_sleep, pump
 
 from klibs.KLExceptions import TrialException
 
@@ -209,8 +209,16 @@ class symbolic_cues_2025(klibs.Experiment):
         self.draw_display(phase='pre_trial')
 
         # trial started by touching start position
-        while not self.bounds.within_boundary(START, mouse_pos()):
-            _ = ui_request()
+        at_start = False
+        _ = pump()
+        while not at_start:
+            q = pump()
+            ui_request(queue = q)
+            lift_offs = get_clicks(released = True)
+            if lift_offs:
+                # if mouse is at start position, set at_start to True
+                if self.bounds.within_boundary(START, lift_offs[0]):
+                    at_start = True
 
         # plug into NatNet stream
         self.opti.start_listening()
