@@ -331,7 +331,22 @@ class symbolic_cues_2025(klibs.Experiment):
 
             # for early starts, toss opti data and recycle trial
             if bad_behaviour == EARLY_START:
-                os.remove(self.opti.data_dir)
+                # Ensure OptiTracker has stopped listening before removing the file
+                if self.opti.is_listening():
+                    self.opti.stop_listening()
+
+                # Sometimes this is called whilst file is being written
+                max_attempts = 3
+                for attempt in range(max_attempts):
+                    try:
+                        if os.path.exists(self.opti.data_dir):
+                            os.remove(self.opti.data_dir)
+                        break  # Successfully removed or file doesn't exist
+                    except (PermissionError, OSError) as e:
+                        if attempt == max_attempts - 1:  # Last attempt
+                            print(f"Warning: Could not remove file {self.opti.data_dir}: {e}")
+                        else:
+                            smart_sleep(50)  # Give writer time to finish
 
                 self.trial_list.append(
                     (
