@@ -14,11 +14,12 @@ from klibs.KLCommunication import message
 from klibs.KLGraphics import KLDraw as kld
 from klibs.KLGraphics import KLNumpySurface as kln
 from klibs.KLGraphics import blit, fill, flip, clear
-from klibs.KLUserInterface import any_key, mouse_pos, ui_request
+from klibs.KLUserInterface import any_key, mouse_pos, ui_request, get_clicks, pump
 from klibs.KLUtilities import smart_sleep
 
 from klibs.KLExceptions import TrialException
 
+# NOTE: On PC this is case sensitive (first O is a big O)
 from Optitracker.optitracker.OptiTracker import Optitracker  # type: ignore
 
 BLACK = (0, 0, 0, 255)
@@ -212,14 +213,20 @@ class symbolic_cues_2025(klibs.Experiment):
         self.draw_display(phase='pre_trial')
 
         # trial started by touching start position
-        while not self.bounds.within_boundary(START, mouse_pos()):
-            _ = ui_request()
+        at_start = False
+        while not at_start:
+            q = pump()
+            ui_request(queue = q)
 
-        # plug into NatNet stream
-        self.opti.start_listening()
+            lift_offs = get_clicks(released = True, queue = q)
 
-        # give opti a 10 frame lead
-        smart_sleep(1e3 / 120 * 10)
+            if lift_offs:
+                # if mouse ins at start position, set at_start to True
+                for lift_off in lift_offs:
+                    if self.bounds.within_boundary(START, lift_off):
+                        self.opti.start_listening()
+                        at_start = True
+                        break
 
         # Ensure opti is listening
         if not self.opti.is_listening():
@@ -247,9 +254,11 @@ class symbolic_cues_2025(klibs.Experiment):
             # draw display for current phase
             self.draw_display(phase=trial_phase)
 
+            estimated_frame = self.evm.trial_time_ms // 120
+
             # state variables
-            cursor = mouse_pos()
             t_now = self.evm.trial_time_ms
+            cursor = mouse_pos()
             velocity = self.opti.velocity(axis='all')
 
             if P.development_mode:
@@ -265,7 +274,11 @@ class symbolic_cues_2025(klibs.Experiment):
 
             # Prior to go-signal: abort if moving
             if trial_phase == 'pre_cue':
-                if velocity >= P.velocity_threshold:  # type: ignore
+                
+                # monitoring velocity proved to be fussy at this stage
+                travel = self.opti.distance(frames = t_now // 120)
+
+                if travel > 50:  # fail if hand drifts 50+ mm prior to cue onset
                     bad_behaviour = EARLY_START
                 else:
                     if t_now >= P.cue_onset:  # type: ignore
