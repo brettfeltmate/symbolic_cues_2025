@@ -151,17 +151,23 @@ class symbolic_cues_2025(klibs.Experiment):
                     content=image_path,
                     width=int(P.image_width * self.px_cm),  # type: ignore
                 )
+        self.block_list = []
+        for _ in range(P.blocks_per_experiment):
+            trial_list = deepcopy(P.trial_list)
+            shuffle(trial_list)
+            self.block_list.append(trial_list)
 
         # make copy of "default" list defined in _params.py
-        self.trial_list = deepcopy(P.trial_list)  # type: ignore
-
-        shuffle(self.trial_list)
         
         if P.run_practice_blocks:
-            self.practice_trial_list = sample(self.trial_list, P.practice_trials_per_block)  # type: ignore[attr-defined]
+            self.practice_trial_list = sample(self.block_list[0], P.trials_per_practice_block)  # type: ignore[attr-defined]
 
     def block(self):
         self.opti_path += f'/Block_{P.block_number}'
+        if P.practicing:
+            self.trial_list = self.practice_trial_list
+        else:
+            self.trial_list = self.block_list.pop()
         fill()
         instrux = (
             'Task Instructions:\n\n'
@@ -189,12 +195,14 @@ class symbolic_cues_2025(klibs.Experiment):
     def trial_prep(self):
         # ensure mouse isn't lingering within any monitored space
         mouse_pos(position=[0, 0])
-
-        (  # get params for trial
-            self.cue_reliability,
-            self.cue_laterality,
-            self.cue_validity,
-        ) = self.trial_list.pop() if not P.practicing else self.practice_trial_list.pop()
+        try:
+            (  # get params for trial
+                self.cue_reliability,
+                self.cue_laterality,
+                self.cue_validity,
+            ) = self.trial_list.pop() if not P.practicing else self.practice_trial_list.pop()
+        except:
+            pass
 
         # set target pos as function of cue validity
         if self.cue_laterality == LEFT:
@@ -231,6 +239,8 @@ class symbolic_cues_2025(klibs.Experiment):
         # Ensure opti is listening
         if not self.opti.is_listening():
             raise RuntimeError('Failed to connect to OptiTrack system')
+        else:
+            smart_sleep(60)
 
     def trial(self):  # type: ignore[override]
         # control flags
@@ -254,8 +264,6 @@ class symbolic_cues_2025(klibs.Experiment):
             # draw display for current phase
             self.draw_display(phase=trial_phase)
 
-            estimated_frame = self.evm.trial_time_ms // 120
-
             # state variables
             t_now = self.evm.trial_time_ms
             cursor = mouse_pos()
@@ -276,9 +284,9 @@ class symbolic_cues_2025(klibs.Experiment):
             if trial_phase == 'pre_cue':
                 
                 # monitoring velocity proved to be fussy at this stage
-                travel = self.opti.distance(frames = t_now // 120)
+                travel = self.opti.distance(num_frames = t_now // 120, axis = "all")
 
-                if travel > 50:  # fail if hand drifts 50+ mm prior to cue onset
+                if travel > 10:  # fail if hand drifts 50+ mm prior to cue onset
                     bad_behaviour = EARLY_START
                 else:
                     if t_now >= P.cue_onset:  # type: ignore
@@ -394,6 +402,8 @@ class symbolic_cues_2025(klibs.Experiment):
         clear()
         if self.opti.is_listening():
             self.opti.stop_listening()
+
+        smart_sleep(P.inter_trial_interval)
 
     def clean_up(self):
         pass

@@ -6,7 +6,7 @@
 collect_demographics = True
 manual_demographics_collection = False
 manual_trial_generation = False
-run_practice_blocks = False
+run_practice_blocks = True
 multi_user = False
 # in centimeters, 57cm = 1 deg of visual angle per cm of screen
 view_distance = 57
@@ -21,7 +21,7 @@ eye_tracking = False
 #########################################
 # Environment Aesthetic Defaults
 #########################################
-default_fill_color = (125, 125, 125, 255)
+default_fill_color = (255, 255, 255, 255)
 default_color = (0, 0, 0, 255)
 default_font_size = 23
 default_font_unit = 'px'
@@ -75,7 +75,7 @@ marker_count = 10
 window_size = 5  # num frames considered when calculating velocity
 rescale_by = 1000  # rescale values from m to mm
 primary_axis = 'z'  # axis to consider for movement (for/back)
-movement_time_limit = 500   # movetime bound (ms) before trial abort
+movement_time_limit = 550   # movetime bound (ms) before trial abort
 velocity_threshold = 100   # mm/s
 frequent = 0.8
 med_high = 0.525
@@ -118,9 +118,10 @@ circ_size = 6
 target_size = circ_size * 0.95
 fix_size = 4
 line_width = 0.2
-image_width = 4  # cms
+image_width = 5  # cms
 
 # timing params #
 cue_onset = 500
 trial_time_max = 1500
+inter_trial_interval = 500
 # 
