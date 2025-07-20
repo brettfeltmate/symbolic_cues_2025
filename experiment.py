@@ -14,7 +14,13 @@ from klibs.KLCommunication import message
 from klibs.KLGraphics import KLDraw as kld
 from klibs.KLGraphics import KLNumpySurface as kln
 from klibs.KLGraphics import blit, fill, flip, clear
-from klibs.KLUserInterface import any_key, mouse_pos, ui_request, get_clicks, pump
+from klibs.KLUserInterface import (
+    any_key,
+    mouse_pos,
+    ui_request,
+    get_clicks,
+    pump,
+)
 from klibs.KLUtilities import smart_sleep
 
 from klibs.KLExceptions import TrialException
@@ -33,6 +39,7 @@ CENTER = 'CENTER'
 EARLY_START = 'early_start'
 EARLY_STOP = 'early_stop'
 MOVEMENT_TIMEOUT = 'movement_timeout'
+PRACTICE = 'triangle'
 
 
 class symbolic_cues_2025(klibs.Experiment):
@@ -129,7 +136,7 @@ class symbolic_cues_2025(klibs.Experiment):
 
         if P.development_mode:
             self.cursor = kld.Annulus(
-                diameter=P.circ_size * self.px_cm,  # type: ignore
+                diameter=self.px_cm * P.circ_size,  # type: ignore
                 thickness=P.line_width * self.px_cm,  # type: ignore
                 fill=ORANGE,
             )
@@ -139,28 +146,54 @@ class symbolic_cues_2025(klibs.Experiment):
         shuffle(cue_image_names)
 
         # generate cue stimuli
-        self.cue = {}
+        self.cue_stims = {}
         for reliability in [HIGH, LOW]:
-            self.cue[reliability] = {}
+            self.cue_stims[reliability] = {}
             for laterality in [RIGHT, LEFT]:
                 # load images and make presentable
                 image_path = (
                     f'ExpAssets/Resources/image/{cue_image_names.pop()}.jpg'
                 )
-                self.cue[reliability][laterality] = kln.NumpySurface(
+                self.cue_stims[reliability][laterality] = kln.NumpySurface(
                     content=image_path,
                     width=int(P.image_width * self.px_cm),  # type: ignore
                 )
         self.block_list = []
         for _ in range(P.blocks_per_experiment):
-            trial_list = deepcopy(P.trial_list)
+            trial_list = deepcopy(P.trial_list)  # type: ignore[attr-defined]
             shuffle(trial_list)
             self.block_list.append(trial_list)
 
-        # make copy of "default" list defined in _params.py
-        
+        self.instructions = {
+            'task': (
+                'Task Instructions:\n\n'
+                'Your task is to reach out and tap on a target circle quickly and accurately.\n'
+                '\tNOTE: the target will not appear until AFTER you start your reach.\n\n'
+                'In each trial, you will first see three (unfilled) circles, and a crosshair.\n'
+                'To start a trial, tap the start (nearest) circle with your finger.\n'
+                'Then, WAIT until the go-signal (image) replaces the crosshair.\n'
+                '\tNOTE: Moving prior to the go-signal will terminate the trial.\n\n'
+                'When you see the signal, start reaching towards the far circles.\n'
+                "Once you start reaching, one of them will 'fill-in'. That is your target.\n"
+                '\tNOTE: Once your reach is in motion, you cannot stop or otherwise hesitate.\n\n'
+                'When you are ready, press any key to start the experiment.'
+            ),
+            'block': (
+                'Please inform the experimenter that you have completed this block.\n',
+                f'\nOnce you have been instructed to continue, press space to begin block {P.block_number}.',
+            ),
+        }
+
+        # NOTE: Cue stimuli is overrided to be triangle.jpg for every practice trial
         if P.run_practice_blocks:
+            self.cue_stims[PRACTICE] = kln.NumpySurface(
+                content='ExpAssets/Resources/image/triangle.jpg',
+                width=int(P.image_width * self.px_cm),  # type: ignore
+            )
             self.practice_trial_list = sample(self.block_list[0], P.trials_per_practice_block)  # type: ignore[attr-defined]
+            self.insert_practice_block(
+                block_nums=[1], trial_counts=P.trials_per_practice_block  # type: ignore[attr-defined]
+            )
 
     def block(self):
         self.opti_path += f'/Block_{P.block_number}'
@@ -168,26 +201,19 @@ class symbolic_cues_2025(klibs.Experiment):
             self.trial_list = self.practice_trial_list
         else:
             self.trial_list = self.block_list.pop()
+
         fill()
-        instrux = (
-            'Task Instructions:\n\n'
-            'Your task is to reach out and tap on a target circle quickly and accurately.\n'
-            '\tNOTE: the target will not appear until AFTER you start your reach.\n\n'
-            'In each trial, you will first see three (unfilled) circles, and a crosshair.\n'
-            'To start a trial, tap the start (nearest) circle with your finger.\n'
-            'Then, WAIT until the go-signal (image) replaces the crosshair.\n'
-            '\tNOTE: Moving prior to the go-signal will terminate the trial.\n\n'
-            'When you see the signal, start reaching towards the far circles.\n'
-            "Once you start reaching, one of them will 'fill-in'. That is your target.\n"
-            '\tNOTE: Once your reach is in motion, you cannot stop or otherwise hesitate.\n\n'
-            'When you are ready, press any key to start the experiment.'
+
+        msg = (
+            self.instructions['task']
+            if P.block_number == 1
+            else self.instructions['block']
         )
 
         if P.practicing:
-            instrux += '\n\n(PRACTICE ROUND)'
+            msg += '\n\n(PRACTICE BLOCK)'
 
-        fill()
-        message(instrux, location=P.screen_c, registration=5, blit_txt=True)
+        message(msg, location=P.screen_c, registration=5, blit_txt=True)
         flip()
 
         any_key()
@@ -200,8 +226,12 @@ class symbolic_cues_2025(klibs.Experiment):
                 self.cue_reliability,
                 self.cue_laterality,
                 self.cue_validity,
-            ) = self.trial_list.pop() if not P.practicing else self.practice_trial_list.pop()
-        except:
+            ) = (
+                self.trial_list.pop()
+                if not P.practicing
+                else self.practice_trial_list.pop()
+            )
+        except IndexError:
             pass
 
         # set target pos as function of cue validity
@@ -214,7 +244,7 @@ class symbolic_cues_2025(klibs.Experiment):
         self.trial_path += f'_Trial_{P.trial_number}_{self.cue_reliability}_{self.cue_laterality}_{self.cue_validity}.csv'
 
         if P.practicing:
-            self.trial_path += "_PRACTICE"
+            self.trial_path += '_PRACTICE'
 
         self.opti.data_dir = self.trial_path
 
@@ -224,9 +254,9 @@ class symbolic_cues_2025(klibs.Experiment):
         at_start = False
         while not at_start:
             q = pump()
-            ui_request(queue = q)
+            ui_request(queue=q)
 
-            lift_offs = get_clicks(released = True, queue = q)
+            lift_offs = get_clicks(released=True, queue=q)
 
             if lift_offs:
                 # if mouse ins at start position, set at_start to True
@@ -270,23 +300,27 @@ class symbolic_cues_2025(klibs.Experiment):
             velocity = self.opti.velocity(axis='all')
 
             if P.development_mode:
-                print(f"\n\t   Trial: {P.trial_number}")
-                print(f"\n\t   Phase: {trial_phase}")
-                print(f"\n\tPosition: {cursor}")
-                print(f"\n\t    Time: {int(t_now)} ms")
-                print(f"\n\tVelocity: {int(velocity)} px/s")
-                print(f"\n\t   Error: {bad_behaviour}")
+                print(f'\n\t   Trial: {P.trial_number}')
+                print(f'\n\t   Phase: {trial_phase}')
+                print(f'\n\tPosition: {cursor}')
+                print(f'\n\t    Time: {int(t_now)} ms')
+                print(f'\n\tVelocity: {int(velocity)} px/s')
+                print(f'\n\t   Error: {bad_behaviour}')
             #
             # Determine what should happen on next redraw
             #
 
             # Prior to go-signal: abort if moving
             if trial_phase == 'pre_cue':
-                
-                # monitoring velocity proved to be fussy at this stage
-                travel = self.opti.distance(num_frames = t_now // 120, axis = "all")
 
-                if travel > 10:  # fail if hand drifts 50+ mm prior to cue onset
+                # monitoring velocity proved to be fussy at this stage
+                travel = self.opti.distance(
+                    num_frames=t_now // 120, axis='all'
+                )
+
+                if (
+                    travel > 10
+                ):  # fail if hand drifts 50+ mm prior to cue onset
                     bad_behaviour = EARLY_START
                 else:
                     if t_now >= P.cue_onset:  # type: ignore
@@ -338,9 +372,15 @@ class symbolic_cues_2025(klibs.Experiment):
                 'practicing': P.practicing,
                 'block_num': P.block_number,
                 'trial_num': P.trial_number,
-                'cue_reliability': self.cue_validity,
-                'cue_laterality': self.cue_laterality,
-                'cue_validity': self.cue_validity,
+                'cue_reliability': self.cue_reliability
+                if not P.practicing
+                else 'NA',
+                'cue_laterality': self.cue_laterality
+                if not P.practicing
+                else 'NA',
+                'cue_validity': self.cue_validity
+                if not P.practicing
+                else 'NA',
                 'reaction_time': reaction_time if not None else 'NA',
                 'movement_time': movement_time if not None else 'NA',
                 'touched_target': item_touched == self.target_side
@@ -368,7 +408,9 @@ class symbolic_cues_2025(klibs.Experiment):
                         break  # Successfully removed or file doesn't exist
                     except (PermissionError, OSError) as e:
                         if attempt == max_attempts - 1:  # Last attempt
-                            print(f"Warning: Could not remove file {self.opti.data_dir}: {e}")
+                            print(
+                                f'Warning: Could not remove file {self.opti.data_dir}: {e}'
+                            )
                         else:
                             smart_sleep(50)  # Give writer time to finish
 
@@ -387,9 +429,13 @@ class symbolic_cues_2025(klibs.Experiment):
             'practicing': P.practicing,
             'block_num': P.block_number,
             'trial_num': P.trial_number,
-            'cue_reliability': self.cue_validity,
-            'cue_laterality': self.cue_laterality,
-            'cue_validity': self.cue_validity,
+            'cue_reliability': self.cue_reliability
+            if not P.practicing
+            else 'NA',
+            'cue_laterality': self.cue_laterality
+            if not P.practicing
+            else 'NA',
+            'cue_validity': self.cue_validity if not P.practicing else 'NA',
             'reaction_time': reaction_time if not None else 'NA',
             'movement_time': movement_time if not None else 'NA',
             'touched_target': item_touched == self.target_side
@@ -403,7 +449,7 @@ class symbolic_cues_2025(klibs.Experiment):
         if self.opti.is_listening():
             self.opti.stop_listening()
 
-        smart_sleep(P.inter_trial_interval)
+        smart_sleep(P.inter_trial_interval)  # type: ignore[attr-defined]
 
     def clean_up(self):
         pass
@@ -418,20 +464,25 @@ class symbolic_cues_2025(klibs.Experiment):
         if msg:
             message(msg, location=P.screen_c, registration=5, blit_txt=True)
 
-        if phase == 'pre_cue':
+        if phase == 'pre_cue' or phase == 'pre_target':
             blit(self.fix, location=self.locs[CENTER], registration=5)
 
-        elif phase == 'pre_target':
-            blit(self.fix, location=self.locs[CENTER], registration=5)
+        cue = (
+            self.cue_stims[self.cue_reliability][self.cue_laterality]
+            if not P.practicing
+            else self.cue_stims[PRACTICE]
+        )
+
+        if phase == 'pre_target':
             blit(
-                self.cue[self.cue_reliability][self.cue_laterality],
+                cue,
                 location=self.locs[CENTER],
                 registration=5,
             )
 
         if phase == 'responding':
             blit(
-                self.cue[self.cue_reliability][self.cue_laterality],
+                cue,
                 location=self.locs[CENTER],
                 registration=5,
             )

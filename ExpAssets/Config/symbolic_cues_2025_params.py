@@ -46,7 +46,7 @@ multi_session_project = False
 # trials_per_block = trials_per_cue * 4
 conditions = ['opti', 'mouse']
 default_condition = 'opti'
-trials_per_practice_block = 12
+trials_per_practice_block = 20
 
 #########################################
 # Development Mode Settings
@@ -124,4 +124,3 @@ image_width = 5  # cms
 cue_onset = 500
 trial_time_max = 1500
 inter_trial_interval = 500
-# 
