@@ -196,7 +196,7 @@ class symbolic_cues_2025(klibs.Experiment):
             )
 
     def block(self):
-        self.opti_path += f'/Block_{P.block_number}'
+        self.block_path = f'/Block_{P.block_number}'
         if P.practicing:
             self.trial_list = self.practice_trial_list
         else:
@@ -240,13 +240,14 @@ class symbolic_cues_2025(klibs.Experiment):
         else:
             self.target_side = RIGHT if self.cue_validity else LEFT
 
-        self.trial_path = self.opti_path
-        self.trial_path += f'_Trial_{P.trial_number}_{self.cue_reliability}_{self.cue_laterality}_{self.cue_validity}.csv'
+        self.trial_path = f'_Trial_{P.trial_number}_{self.cue_reliability}_{self.cue_laterality}_{self.cue_validity}'
 
         if P.practicing:
             self.trial_path += '_PRACTICE'
+        
+        self.trial_path += ".csv"
 
-        self.opti.data_dir = self.trial_path
+        self.opti.data_dir = self.opti_path + self.block_path + self.trial_path
 
         self.draw_display(phase='pre_trial')
 
