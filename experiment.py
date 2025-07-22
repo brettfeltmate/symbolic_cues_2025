@@ -30,12 +30,12 @@ from Optitracker.optitracker.OptiTracker import Optitracker  # type: ignore
 
 BLACK = (0, 0, 0, 255)
 ORANGE = (255, 165, 0, 255)
-HIGH = 'HIGH'
-LOW = 'LOW'
-LEFT = 'LEFT'
-RIGHT = 'RIGHT'
-START = 'START'
-CENTER = 'CENTER'
+HIGH = 'high'
+LOW = 'low'
+LEFT = 'left'
+RIGHT = 'right'
+START = 'start'
+CENTER = 'center'
 EARLY_START = 'early_start'
 EARLY_STOP = 'early_stop'
 MOVEMENT_TIMEOUT = 'movement_timeout'
@@ -145,19 +145,22 @@ class symbolic_cues_2025(klibs.Experiment):
         cue_image_names = ['bowtie', 'laos', 'legoman', 'barbell']
         shuffle(cue_image_names)
 
-        # generate cue stimuli
+        cue_map = {}
         self.cue_stims = {}
         for reliability in [HIGH, LOW]:
             self.cue_stims[reliability] = {}
             for laterality in [RIGHT, LEFT]:
                 # load images and make presentable
-                image_path = (
-                    f'ExpAssets/Resources/image/{cue_image_names.pop()}.jpg'
-                )
+                image_name = cue_image_names.pop()
+                image_path = 'ExpAssets/Resources/image/' + image_name + '.jpg'
                 self.cue_stims[reliability][laterality] = kln.NumpySurface(
                     content=image_path,
                     width=int(P.image_width * self.px_cm),  # type: ignore
                 )
+                cue_map[reliability + '_' + laterality] = image_name
+
+        self.db.insert(data=cue_map, table='cues')  # type: ignore
+
         self.block_list = []
         for _ in range(P.blocks_per_experiment):
             trial_list = deepcopy(P.trial_list)  # type: ignore[attr-defined]
@@ -244,8 +247,8 @@ class symbolic_cues_2025(klibs.Experiment):
 
         if P.practicing:
             self.trial_path += '_PRACTICE'
-        
-        self.trial_path += ".csv"
+
+        self.trial_path += '.csv'
 
         self.opti.data_dir = self.opti_path + self.block_path + self.trial_path
 
@@ -369,7 +372,6 @@ class symbolic_cues_2025(klibs.Experiment):
             smart_sleep(1000)
 
             abort_info = {
-                'participant_id': P.p_id,
                 'practicing': P.practicing,
                 'block_num': P.block_number,
                 'trial_num': P.trial_number,

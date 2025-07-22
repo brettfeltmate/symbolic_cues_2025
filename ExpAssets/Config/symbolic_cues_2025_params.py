@@ -84,8 +84,8 @@ rare = 0.2
 
 # Cue/exp params #
 cue_types = {  # Proportion, by cue type, of in/validly cued trials
-    'HIGH': {'LEFT': [frequent, rare], 'RIGHT': [rare, frequent]},
-    'LOW': {'LEFT': [med_high, med_low], 'RIGHT': [med_low, med_high]},
+    'high': {'left': [frequent, rare], 'right': [rare, frequent]},
+    'low': {'left': [med_high, med_low], 'right': [med_low, med_high]},
 }
 
 blocks_per_experiment = 4

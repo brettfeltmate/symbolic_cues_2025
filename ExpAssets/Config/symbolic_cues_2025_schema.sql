@@ -21,6 +21,15 @@ CREATE TABLE trials (
     touched_target text not null
 ) ;
 
+CREATE TABLE cues (
+    id integer primary key autoincrement not null,
+    participant_id integer not null references participants(id),
+    high_left text not null,
+    high_right text not null,
+    low_left text not null,
+    low_right text not null
+)
+
 CREATE TABLE aborts (
     id integer primary key autoincrement not null,
     participant_id integer not null references participants(id),
