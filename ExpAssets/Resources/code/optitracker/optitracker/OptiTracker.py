@@ -616,7 +616,7 @@ class Optitracker(object):
 
         else:
             # if type(frames) is dict:
-            if frames.get('label') == 'Hand':
+            if frames.get('label') == 'hand':
                 # print("__write | hand")
                 # Append data to trial-specific CSV file
                 fname = self.__data_dir

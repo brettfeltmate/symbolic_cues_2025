@@ -28,7 +28,7 @@ CREATE TABLE cues (
     high_right text not null,
     low_left text not null,
     low_right text not null
-)
+);
 
 CREATE TABLE aborts (
     id integer primary key autoincrement not null,

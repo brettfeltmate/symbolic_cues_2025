@@ -146,6 +146,7 @@ class symbolic_cues_2025(klibs.Experiment):
         shuffle(cue_image_names)
 
         cue_map = {}
+        cue_map['participant_id'] = P.p_id
         self.cue_stims = {}
         for reliability in [HIGH, LOW]:
             self.cue_stims[reliability] = {}
@@ -372,6 +373,7 @@ class symbolic_cues_2025(klibs.Experiment):
             smart_sleep(1000)
 
             abort_info = {
+                'participant_id': P.p_id,
                 'practicing': P.practicing,
                 'block_num': P.block_number,
                 'trial_num': P.trial_number,
